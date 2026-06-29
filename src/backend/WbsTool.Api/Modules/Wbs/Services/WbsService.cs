@@ -18,7 +18,7 @@ public class WbsService : IWbsService
     {
         return _dbContext.WbsNodes
             .AsNoTracking()
-            .Where(w => w.ProjectId == projectId)
+            .Where(w => w.ProjectId == projectId && w.IsActive)
             .OrderBy(w => w.Level)
             .ThenBy(w => w.SortOrder)
             .Select(MapToDto)
@@ -29,7 +29,7 @@ public class WbsService : IWbsService
     {
         var flatNodes = _dbContext.WbsNodes
             .AsNoTracking()
-            .Where(w => w.ProjectId == projectId)
+            .Where(w => w.ProjectId == projectId && w.IsActive)
             .OrderBy(w => w.Level)
             .ThenBy(w => w.SortOrder)
             .ToList();
@@ -83,6 +83,16 @@ public class WbsService : IWbsService
             throw new ArgumentException($"Project with id '{projectId}' was not found.");
         }
 
+        var duplicateVisibleWbsIdExists = _dbContext.WbsNodes.Any(w =>
+            w.ProjectId == projectId &&
+            w.IsActive &&
+            w.VisibleWbsId == request.VisibleWbsId);
+
+        if (duplicateVisibleWbsIdExists)
+        {
+            throw new ArgumentException($"A WBS node with visible WBS ID '{request.VisibleWbsId}' already exists in this project.");
+        }
+
         WbsNode? parent = null;
         var calculatedLevel = 1;
 
@@ -90,7 +100,8 @@ public class WbsService : IWbsService
         {
             parent = _dbContext.WbsNodes.FirstOrDefault(w =>
                 w.Id == request.ParentId.Value &&
-                w.ProjectId == projectId);
+                w.ProjectId == projectId &&
+                w.IsActive);
 
             if (parent is null)
             {
@@ -126,6 +137,63 @@ public class WbsService : IWbsService
         _dbContext.SaveChanges();
 
         return MapToDto(node);
+    }
+
+    public WbsNodeDto? Update(Guid projectId, Guid id, UpdateWbsNodeRequest request)
+    {
+        var node = _dbContext.WbsNodes.FirstOrDefault(w =>
+            w.Id == id &&
+            w.ProjectId == projectId);
+
+        if (node is null)
+        {
+            return null;
+        }
+
+        var duplicateVisibleWbsIdExists = _dbContext.WbsNodes.Any(w =>
+            w.ProjectId == projectId &&
+            w.IsActive &&
+            w.Id != id &&
+            w.VisibleWbsId == request.VisibleWbsId);
+
+        if (duplicateVisibleWbsIdExists)
+        {
+            throw new ArgumentException($"A WBS node with visible WBS ID '{request.VisibleWbsId}' already exists in this project.");
+        }
+
+        var type = ParseNodeType(request.Type);
+
+        node.VisibleWbsId = request.VisibleWbsId;
+        node.Title = request.Title;
+        node.Description = request.Description;
+        node.Type = type;
+        node.SortOrder = request.SortOrder;
+        node.PlannedStart = request.PlannedStart;
+        node.PlannedEnd = request.PlannedEnd;
+        node.PlannedHours = request.PlannedHours;
+        node.ActualHours = request.ActualHours;
+        node.IsBlocked = request.IsBlocked;
+        node.Comment = request.Comment;
+        node.IsActive = request.IsActive;
+
+        _dbContext.SaveChanges();
+
+        return MapToDto(node);
+    }
+
+    public bool SoftDelete(Guid id)
+    {
+        var node = _dbContext.WbsNodes.FirstOrDefault(w => w.Id == id);
+
+        if (node is null)
+        {
+            return false;
+        }
+
+        node.IsActive = false;
+        _dbContext.SaveChanges();
+
+        return true;
     }
 
     private static WbsNodeType ParseNodeType(string type)

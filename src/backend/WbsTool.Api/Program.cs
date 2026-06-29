@@ -1,13 +1,25 @@
-using WbsTool.Api.Modules.Wbs.Services;
 using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Data;
 using WbsTool.Api.Modules.Projects.Services;
+using WbsTool.Api.Modules.Wbs.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -23,6 +35,8 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection();
+
+app.UseCors("Frontend");
 
 app.MapControllers();
 
