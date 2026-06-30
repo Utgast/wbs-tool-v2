@@ -15,10 +15,16 @@ public class WbsNodeDto
     public int SortOrder { get; set; }
     public bool IsActive { get; set; }
 
+    public Guid? StatusId { get; set; }
+    public string? StatusLabel { get; set; }
+
     public DateOnly? PlannedStart { get; set; }
     public DateOnly? PlannedEnd { get; set; }
-    public decimal? PlannedHours { get; set; }
-    public decimal? ActualHours { get; set; }
+
+    public decimal PlannedHoursTotal { get; set; }
+    public decimal ActualHoursTotal { get; set; }
+    public decimal PlannedCostTotal { get; set; }
+    public decimal ActualCostTotal { get; set; }
 
     public bool IsBlocked { get; set; }
     public string Comment { get; set; } = string.Empty;

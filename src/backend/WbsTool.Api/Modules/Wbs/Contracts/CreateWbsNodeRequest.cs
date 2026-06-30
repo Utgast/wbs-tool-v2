@@ -7,10 +7,6 @@ public class CreateWbsNodeRequest
     public Guid? ParentId { get; set; }
 
     [Required]
-    [MaxLength(100)]
-    public string VisibleWbsId { get; set; } = string.Empty;
-
-    [Required]
     [MaxLength(200)]
     public string Title { get; set; } = string.Empty;
 
@@ -19,9 +15,6 @@ public class CreateWbsNodeRequest
 
     [Required]
     public string Type { get; set; } = string.Empty;
-
-    public int Level { get; set; }
-    public int SortOrder { get; set; }
 
     public DateOnly? PlannedStart { get; set; }
     public DateOnly? PlannedEnd { get; set; }

@@ -35,3 +35,26 @@ TestResults/
 # Temporary files
 *.tmp
 *.temp
+# Local database files
+src/backend/WbsTool.Api/*.db
+src/backend/WbsTool.Api/*.db-shm
+src/backend/WbsTool.Api/*.db-wal
+src/backend/WbsTool.Api/*backup*.db
+
+# Local seed data
+src/backend/WbsTool.Api/Data/Seed/
+*.seed.json
+
+# Local editor settings
+.vscode/
+
+# Local diagnostic scripts
+src/backend/WbsTool.Api/check-duplicates.csx
+
+# Frontend build/runtime
+src/frontend/wbs-tool-ui/node_modules/
+src/frontend/wbs-tool-ui/dist/
+
+# Temporary backup files
+*.backup-before-clean
+*.bak
