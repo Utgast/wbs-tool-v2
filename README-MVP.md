@@ -135,6 +135,67 @@ Erwartete sichtbare Ressourcen: Ahmad, Ibrahim, Phine, Victor
 
 ---
 
+## ResourceDemand Test
+
+### Alle ResourceDemands abrufen
+
+```http
+GET http://localhost:5046/api/resourcedemands
+```
+
+### Neue ResourceDemand erstellen
+
+```http
+POST http://localhost:5046/api/resourcedemands
+Content-Type: application/json
+
+{
+  "projectId": "7f3faaa5-1245-4d43-978b-88b5bab3a23b",
+  "title": "Test Demand",
+  "createdBy": "test-user"
+}
+```
+
+---
+
+## Competencies Test
+
+### Alle Competencies abrufen
+
+```http
+GET http://localhost:5046/api/competencies
+```
+
+### Person Competencies abrufen
+
+```http
+GET http://localhost:5046/api/persons/{personId}/competencies
+```
+
+### WBS Required Competencies abrufen
+
+```http
+GET http://localhost:5046/api/wbs/{wbsNodeId}/requiredcompetencies
+```
+
+---
+
+## ProcessPhases Test
+
+### Alle ProcessPhases abrufen
+
+```http
+GET http://localhost:5046/api/ProcessPhases
+```
+
+### Project ProcessPhases abrufen
+
+```http
+GET http://localhost:5046/api/Projects/7f3faaa5-1245-4d43-978b-88b5bab3a23b/ProcessPhases
+```
+
+---
+
 ## Health Check
 
 ```http
