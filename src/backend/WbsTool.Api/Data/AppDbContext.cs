@@ -1,7 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using WbsTool.Api.Modules.Capacity.Models;
+using WbsTool.Api.Modules.Competencies.Models;
+using WbsTool.Api.Modules.Governance.Models;
+using WbsTool.Api.Modules.ProcessPhases.Models;
 using WbsTool.Api.Modules.Persons.Models;
 using WbsTool.Api.Modules.Projects.Models;
 using WbsTool.Api.Modules.RateCategories.Models;
+using WbsTool.Api.Modules.ResourceDemands.Models;
 using WbsTool.Api.Modules.Wbs.Models;
 using WbsTaskStatus = WbsTool.Api.Modules.TaskStatuses.Models.TaskStatus;
 
@@ -15,6 +20,14 @@ public class AppDbContext : DbContext
     public DbSet<RateCategory> RateCategories => Set<RateCategory>();
     public DbSet<WbsTaskStatus> TaskStatuses => Set<WbsTaskStatus>();
     public DbSet<ResourceAssignment> ResourceAssignments => Set<ResourceAssignment>();
+    public DbSet<ProcessPhase> ProcessPhases => Set<ProcessPhase>();
+    public DbSet<WbsPhaseMapping> WbsPhaseMappings => Set<WbsPhaseMapping>();
+    public DbSet<Competency> Competencies => Set<Competency>();
+    public DbSet<PersonCompetency> PersonCompetencies => Set<PersonCompetency>();
+    public DbSet<WbsRequiredCompetency> WbsRequiredCompetencies => Set<WbsRequiredCompetency>();
+    public DbSet<CapacityAllocation> CapacityAllocations => Set<CapacityAllocation>();
+    public DbSet<ResourceDemand> ResourceDemands => Set<ResourceDemand>();
+    public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -217,6 +230,239 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(a => new { a.WbsNodeId, a.PersonId, a.AssignmentRole, a.IsActive });
+        });
+
+        modelBuilder.Entity<ProcessPhase>(entity =>
+        {
+            entity.ToTable("ProcessPhases");
+
+            entity.HasKey(p => p.Id);
+
+            entity.HasIndex(p => p.Code)
+                .IsUnique();
+
+            entity.Property(p => p.Code)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(p => p.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(p => p.Goal)
+                .HasMaxLength(1000);
+
+            entity.Property(p => p.Description)
+                .HasMaxLength(2000);
+
+            entity.Property(p => p.DefaultResponsibility)
+                .HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<WbsPhaseMapping>(entity =>
+        {
+            entity.ToTable("WbsPhaseMappings");
+
+            entity.HasKey(m => m.Id);
+
+            entity.HasIndex(m => new { m.ProjectId, m.WbsNodeId, m.ProcessPhaseId })
+                .IsUnique();
+
+            entity.Property(m => m.Comment)
+                .HasMaxLength(2000);
+
+            entity.HasOne(m => m.WbsNode)
+                .WithMany()
+                .HasForeignKey(m => m.WbsNodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(m => m.ProcessPhase)
+                .WithMany()
+                .HasForeignKey(m => m.ProcessPhaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Competency>(entity =>
+        {
+            entity.ToTable("Competencies");
+
+            entity.HasKey(c => c.Id);
+
+            entity.HasIndex(c => c.Code)
+                .IsUnique();
+
+            entity.Property(c => c.Code)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(c => c.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(c => c.Description)
+                .HasMaxLength(2000);
+        });
+
+        modelBuilder.Entity<PersonCompetency>(entity =>
+        {
+            entity.ToTable("PersonCompetencies");
+
+            entity.HasKey(pc => pc.Id);
+
+            entity.HasIndex(pc => new { pc.PersonId, pc.CompetencyId })
+                .IsUnique();
+
+            entity.Property(pc => pc.Comment)
+                .HasMaxLength(2000);
+
+            entity.HasOne(pc => pc.Person)
+                .WithMany()
+                .HasForeignKey(pc => pc.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pc => pc.Competency)
+                .WithMany()
+                .HasForeignKey(pc => pc.CompetencyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WbsRequiredCompetency>(entity =>
+        {
+            entity.ToTable("WbsRequiredCompetencies");
+
+            entity.HasKey(wc => wc.Id);
+
+            entity.HasIndex(wc => new { wc.ProjectId, wc.WbsNodeId, wc.CompetencyId })
+                .IsUnique();
+
+            entity.Property(wc => wc.Comment)
+                .HasMaxLength(2000);
+
+            entity.HasOne(wc => wc.WbsNode)
+                .WithMany()
+                .HasForeignKey(wc => wc.WbsNodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(wc => wc.Competency)
+                .WithMany()
+                .HasForeignKey(wc => wc.CompetencyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CapacityAllocation>(entity =>
+        {
+            entity.ToTable("CapacityAllocations");
+
+            entity.HasKey(ca => ca.Id);
+
+            entity.Property(ca => ca.Source)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(ca => ca.Comment)
+                .HasMaxLength(2000);
+
+            entity.Property(ca => ca.PlannedHours)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(ca => ca.ActualHours)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(ca => ca.AllocationPercent)
+                .HasColumnType("decimal(5,2)");
+
+            entity.HasOne(ca => ca.Person)
+                .WithMany()
+                .HasForeignKey(ca => ca.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ca => ca.Project)
+                .WithMany()
+                .HasForeignKey(ca => ca.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(ca => ca.WbsNode)
+                .WithMany()
+                .HasForeignKey(ca => ca.WbsNodeId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ResourceDemand>(entity =>
+        {
+            entity.ToTable("ResourceDemands");
+
+            entity.HasKey(rd => rd.Id);
+
+            entity.Property(rd => rd.Title)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(rd => rd.Description)
+                .HasMaxLength(4000);
+
+            entity.Property(rd => rd.CreatedBy)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(rd => rd.UpdatedBy)
+                .HasMaxLength(200);
+
+            entity.Property(rd => rd.StatusChangedBy)
+                .HasMaxLength(200);
+
+            entity.Property(rd => rd.DecisionComment)
+                .HasMaxLength(2000);
+
+            entity.Property(rd => rd.PlannedHours)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(rd => rd.Status)
+                .HasConversion<int>();
+
+            entity.HasOne(rd => rd.Project)
+                .WithMany()
+                .HasForeignKey(rd => rd.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(rd => rd.WbsNode)
+                .WithMany()
+                .HasForeignKey(rd => rd.WbsNodeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(rd => rd.RequiredCompetency)
+                .WithMany()
+                .HasForeignKey(rd => rd.RequiredCompetencyId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<RoleAssignment>(entity =>
+        {
+            entity.ToTable("RoleAssignments");
+
+            entity.HasKey(ra => ra.Id);
+
+            entity.Property(ra => ra.Role)
+                .HasConversion<int>();
+
+            entity.Property(ra => ra.ScopeType)
+                .HasConversion<int>();
+
+            entity.Property(ra => ra.AssignedBy)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(ra => ra.Comment)
+                .HasMaxLength(2000);
+
+            entity.Property(ra => ra.RevokedBy)
+                .HasMaxLength(200);
+
+            entity.HasIndex(ra => new { ra.PersonId, ra.Role, ra.ScopeType, ra.ProjectId, ra.IsActive });
+
+            entity.HasOne(ra => ra.Person)
+                .WithMany()
+                .HasForeignKey(ra => ra.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         SeedTaskStatuses(modelBuilder);
