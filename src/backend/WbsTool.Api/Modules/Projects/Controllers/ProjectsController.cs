@@ -58,6 +58,22 @@ public class ProjectsController : ControllerBase
         return Ok(dashboard);
     }
 
+    [HttpGet("{id:guid}/resource-overview")]
+    public ActionResult<ProjectResourceOverviewDto> GetResourceOverview(Guid id)
+    {
+        var overview = _projectDashboardService.GetResourceOverview(id);
+
+        if (overview is null)
+        {
+            return NotFound(new
+            {
+                message = $"Project with id '{id}' was not found."
+            });
+        }
+
+        return Ok(overview);
+    }
+
     [HttpPost]
     public ActionResult<ProjectDto> Create(CreateProjectRequest request)
     {

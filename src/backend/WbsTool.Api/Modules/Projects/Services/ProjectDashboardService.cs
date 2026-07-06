@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Data;
 using WbsTool.Api.Modules.Projects.Contracts;
 
@@ -30,20 +30,6 @@ public class ProjectDashboardService : IProjectDashboardService
             .Where(w => w.ProjectId == projectId && w.IsActive)
             .ToList();
 
-        /*
-         * Wichtig:
-         * Für das Dashboard verwenden wir in Phase 1 bewusst die konsolidierten
-         * WBS-Knotenwerte und NICHT die Summe aller ResourceAssignments.
-         *
-         * Grund:
-         * Die alten Excel-Daten enthalten mehrere Ressourcen-Zeilen pro WBS-ID.
-         * Das ist für die Detailansicht richtig, führt im Dashboard aber zu
-         * Doppel-/Mehrfachzählungen.
-         *
-         * Deshalb:
-         * Dashboard = Level-1-WBS-Werte
-         * Ressourcenbereich = direkte ResourceAssignments
-         */
         var dashboardNodes = activeNodes
             .Where(n => n.Level == 1)
             .ToList();
@@ -51,17 +37,6 @@ public class ProjectDashboardService : IProjectDashboardService
         var totalPlannedHours = dashboardNodes.Sum(n => n.PlannedHours ?? 0m);
         var totalActualHours = dashboardNodes.Sum(n => n.ActualHours ?? 0m);
 
-        /*
-         * Kosten:
-         * In Phase 1 verwenden wir nur importierte/konsolidierte Kosten,
-         * falls diese am WBS-Knoten vorhanden sind.
-         *
-         * Wenn ImportedPlannedCost / ImportedActualCost noch nicht befüllt sind,
-         * bleiben die Kosten im Dashboard 0.
-         *
-         * Das ist bewusst besser, als falsche Kosten aus mehrfachen
-         * Ressourcen-Zuordnungen zusammenzurechnen.
-         */
         var totalPlannedCost = dashboardNodes.Sum(n => n.ImportedPlannedCost ?? 0m);
         var totalActualCost = dashboardNodes.Sum(n => n.ImportedActualCost ?? 0m);
 
@@ -82,15 +57,6 @@ public class ProjectDashboardService : IProjectDashboardService
 
         var today = DateOnly.FromDateTime(DateTime.Today);
 
-        /*
-         * Überfällige Knoten:
-         * Ein Knoten gilt nur dann als überfällig, wenn:
-         * - ein Planende vorhanden ist
-         * - das Planende vor heute liegt
-         * - der Knoten nicht geliefert/abgeschlossen ist
-         *
-         * Dadurch werden bereits gelieferte Alt-Termine nicht unnötig als offen überfällig gezählt.
-         */
         var overdueNodes = activeNodes.Count(n =>
             n.PlannedEnd.HasValue &&
             n.PlannedEnd.Value < today &&
@@ -109,6 +75,64 @@ public class ProjectDashboardService : IProjectDashboardService
             ProgressPercent = progressPercent,
             BlockedNodes = blockedNodes,
             OverdueNodes = overdueNodes
+        };
+    }
+
+    public ProjectResourceOverviewDto? GetResourceOverview(Guid projectId)
+    {
+        var projectExists = _dbContext.Projects
+            .AsNoTracking()
+            .Any(p => p.Id == projectId && p.IsActive);
+
+        if (!projectExists)
+        {
+            return null;
+        }
+
+        var plannedDemandHours = _dbContext.ResourceDemands
+            .AsNoTracking()
+            .Where(x => x.ProjectId == projectId)
+            .Select(x => x.PlannedHours ?? 0m)
+            .ToList()
+            .Sum();
+
+        var assignedHours = (
+            from assignment in _dbContext.ResourceAssignments.AsNoTracking()
+            join wbsNode in _dbContext.WbsNodes.AsNoTracking()
+                on assignment.WbsNodeId equals wbsNode.Id
+            where wbsNode.ProjectId == projectId
+                  && assignment.IsActive
+                  && wbsNode.IsActive
+            select assignment.PlannedHours ?? 0m
+        )
+        .ToList()
+        .Sum();
+
+        var capacityHours = _dbContext.CapacityAllocations
+            .AsNoTracking()
+            .Where(x => x.ProjectId == projectId && x.IsActive)
+            .Select(x => x.PlannedHours ?? 0m)
+            .ToList()
+            .Sum();
+
+        var openHours = plannedDemandHours - assignedHours;
+
+        var utilizationPercent = 0m;
+
+        if (capacityHours > 0)
+        {
+            utilizationPercent = Math.Round(
+                assignedHours / capacityHours * 100m,
+                2);
+        }
+
+        return new ProjectResourceOverviewDto
+        {
+            PlannedDemandHours = plannedDemandHours,
+            AssignedHours = assignedHours,
+            OpenHours = openHours,
+            CapacityHours = capacityHours,
+            UtilizationPercent = utilizationPercent
         };
     }
 }
