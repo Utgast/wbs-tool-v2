@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Data;
+using WbsTool.Api.Modules.Competencies.Services;
 using WbsTool.Api.Modules.Persons.Services;
+using WbsTool.Api.Modules.ProcessPhases.Services;
 using WbsTool.Api.Modules.Projects.Services;
 using WbsTool.Api.Modules.RateCategories.Services;
 using WbsTool.Api.Modules.ResourceDemands.Services;
@@ -40,6 +42,8 @@ builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IRateCategoryService, RateCategoryService>();
 builder.Services.AddScoped<ITaskStatusService, TaskStatusService>();
 builder.Services.AddScoped<IResourceDemandService, ResourceDemandService>();
+builder.Services.AddScoped<ICompetencyService, CompetencyService>();
+builder.Services.AddScoped<IProcessPhaseService, ProcessPhaseService>();
 
 builder.Services.AddScoped<IAmprionPqSeedService, AmprionPqSeedService>();
 
