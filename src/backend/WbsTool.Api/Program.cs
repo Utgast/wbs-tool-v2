@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Data;
+using WbsTool.Api.Modules.Capacity.Services;
 using WbsTool.Api.Modules.Competencies.Services;
 using WbsTool.Api.Modules.Persons.Services;
 using WbsTool.Api.Modules.ProcessPhases.Services;
@@ -35,13 +36,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IProjectDashboardService, ProjectDashboardService>();
+
 builder.Services.AddScoped<IWbsService, WbsService>();
 builder.Services.AddScoped<IResourceAssignmentService, ResourceAssignmentService>();
 
 builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IRateCategoryService, RateCategoryService>();
 builder.Services.AddScoped<ITaskStatusService, TaskStatusService>();
+
 builder.Services.AddScoped<IResourceDemandService, ResourceDemandService>();
+builder.Services.AddScoped<ICapacityAllocationService, CapacityAllocationService>();
+
 builder.Services.AddScoped<ICompetencyService, CompetencyService>();
 builder.Services.AddScoped<IProcessPhaseService, ProcessPhaseService>();
 

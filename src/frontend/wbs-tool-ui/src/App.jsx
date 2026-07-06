@@ -1,19 +1,11 @@
 import { DndContext } from '@dnd-kit/core'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
-
+import NavigationTabs from './components/NavigationTabs'
 import ProjectHeader from './components/ProjectHeader'
 import TemplatePalette from './components/TemplatePalette'
 import WbsDetailPanel from './components/WbsDetailPanel'
 import WbsTreePanel from './components/WbsTreePanel'
-
-import { getPersons } from './services/personsApi'
-import { getRateCategories } from './services/rateCategoriesApi'
-import {
-  createResourceAssignment,
-  getResourceAssignments,
-} from './services/resourceAssignmentsApi'
-import { getTaskStatuses } from './services/taskStatusesApi'
 
 import {
   createWbsNode,
@@ -23,6 +15,14 @@ import {
   getWbsTree,
   updateWbsNode,
 } from './services/api'
+
+import { getPersons } from './services/personsApi'
+import { getRateCategories } from './services/rateCategoriesApi'
+import {
+  createResourceAssignment,
+  getResourceAssignments,
+} from './services/resourceAssignmentsApi'
+import { getTaskStatuses } from './services/taskStatusesApi'
 
 import {
   buildCreatePayload,
@@ -74,6 +74,11 @@ function App() {
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [assignmentActionError, setAssignmentActionError] = useState('')
 
+  const [currentTab, setCurrentTab] = useState('wbs')
+
+  const workspaceRequestRef = useRef(0)
+  const assignmentsRequestRef = useRef(0)
+
   useEffect(() => {
     loadProjects()
     loadMasterData()
@@ -81,19 +86,29 @@ function App() {
 
   useEffect(() => {
     if (!selectedProject?.id) {
-      setDashboard(null)
-      setWbsTree([])
-      setSelectedNode(null)
-      setDraftNode(null)
-      setDetailMode('empty')
-      setResourceAssignments([])
-      setResourceAssignmentsError('')
-      setAssignmentActionError('')
+      resetWorkspaceState()
       return
     }
 
     loadWorkspace(selectedProject.id)
   }, [selectedProject])
+
+  function resetDetailState() {
+    setSelectedNode(null)
+    setDraftNode(null)
+    setDetailMode('empty')
+    setIsDirty(false)
+    setResourceAssignments([])
+    setResourceAssignmentsError('')
+    setAssignmentActionError('')
+  }
+
+  function resetWorkspaceState() {
+    setDashboard(null)
+    setWbsTree([])
+    setLastCreatedNode(null)
+    resetDetailState()
+  }
 
   function getStoredProjectId() {
     try {
@@ -113,6 +128,15 @@ function App() {
     }
   }
 
+  function toNullableNumber(value) {
+    if (value === '' || value === null || value === undefined) {
+      return null
+    }
+
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+
   async function loadProjects() {
     setLoadingProjects(true)
     setError('')
@@ -127,13 +151,15 @@ function App() {
         const storedProjectId = getStoredProjectId()
 
         const rememberedProject =
-          safeProjects.find((project) => String(project.id) === String(storedProjectId)) ||
-          null
+          safeProjects.find((project) => String(project.id) === String(storedProjectId)) || null
 
         const nextSelectedProject = rememberedProject || safeProjects[0]
 
         setSelectedProject(nextSelectedProject)
-        storeProjectId(nextSelectedProject.id)
+
+        if (nextSelectedProject?.id) {
+          storeProjectId(nextSelectedProject.id)
+        }
       } else {
         setSelectedProject(null)
       }
@@ -166,9 +192,12 @@ function App() {
   }
 
   async function loadResourceAssignments(projectId, wbsNodeId) {
+    const requestId = ++assignmentsRequestRef.current
+
     if (!projectId || !wbsNodeId) {
       setResourceAssignments([])
       setResourceAssignmentsError('')
+      setResourceAssignmentsLoading(false)
       return
     }
 
@@ -177,18 +206,31 @@ function App() {
 
     try {
       const assignments = await getResourceAssignments(projectId, wbsNodeId)
+
+      if (requestId !== assignmentsRequestRef.current) {
+        return
+      }
+
       setResourceAssignments(Array.isArray(assignments) ? assignments : [])
     } catch (err) {
+      if (requestId !== assignmentsRequestRef.current) {
+        return
+      }
+
       setResourceAssignments([])
       setResourceAssignmentsError(
         err.message || 'Ressourcen-Zuordnungen konnten nicht geladen werden'
       )
     } finally {
-      setResourceAssignmentsLoading(false)
+      if (requestId === assignmentsRequestRef.current) {
+        setResourceAssignmentsLoading(false)
+      }
     }
   }
 
   async function loadWorkspace(projectId) {
+    const requestId = ++workspaceRequestRef.current
+
     setLoadingWorkspace(true)
     setError('')
     setResourceAssignments([])
@@ -201,6 +243,10 @@ function App() {
         getWbsTree(projectId),
       ])
 
+      if (requestId !== workspaceRequestRef.current) {
+        return
+      }
+
       setDashboard(dashboardData)
       setWbsTree(Array.isArray(treeData) ? treeData : [])
       setSelectedNode(null)
@@ -209,6 +255,10 @@ function App() {
       setLastCreatedNode(null)
       setIsDirty(false)
     } catch (err) {
+      if (requestId !== workspaceRequestRef.current) {
+        return
+      }
+
       setError(err.message || 'Fehler beim Laden des Arbeitsbereichs')
       setDashboard(null)
       setWbsTree([])
@@ -221,7 +271,9 @@ function App() {
       setResourceAssignmentsError('')
       setAssignmentActionError('')
     } finally {
-      setLoadingWorkspace(false)
+      if (requestId === workspaceRequestRef.current) {
+        setLoadingWorkspace(false)
+      }
     }
   }
 
@@ -229,12 +281,23 @@ function App() {
     const projectId = event.target.value
     const project = projects.find((item) => String(item.id) === String(projectId)) || null
 
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'Es gibt ungespeicherte Änderungen. Projekt wirklich wechseln?'
+      )
+
+      if (!confirmed) {
+        return
+      }
+    }
+
     setSelectedProject(project)
     storeProjectId(project?.id)
 
     setResourceAssignments([])
     setResourceAssignmentsError('')
     setAssignmentActionError('')
+    setLastCreatedNode(null)
   }
 
   function handleSelectNode(node) {
@@ -263,6 +326,7 @@ function App() {
     }
 
     try {
+      setError('')
       await deactivateWbsNode(selectedProject.id, node.id)
 
       const refreshedTree = await getWbsTree(selectedProject.id)
@@ -272,13 +336,11 @@ function App() {
       setDashboard(refreshedDashboard)
 
       if (selectedNode?.id === node.id) {
-        setSelectedNode(null)
-        setDraftNode(null)
-        setDetailMode('empty')
-        setIsDirty(false)
-        setResourceAssignments([])
-        setResourceAssignmentsError('')
-        setAssignmentActionError('')
+        resetDetailState()
+      }
+
+      if (lastCreatedNode?.id === node.id) {
+        setLastCreatedNode(null)
       }
 
       setToast({
@@ -334,31 +396,20 @@ function App() {
           ? draftNode.actualHours
           : draftNode.actualHoursTotal
 
+      const sortOrderValue = toNullableNumber(draftNode.sortOrder)
+      const plannedHoursNumber = toNullableNumber(plannedHoursValue)
+      const actualHoursNumber = toNullableNumber(actualHoursValue)
+
       const payload = {
         visibleWbsId: draftNode.visibleWbsId ?? '',
         title: draftNode.title ?? '',
         description: draftNode.description ?? '',
         type: draftNode.type ?? '',
-        sortOrder:
-          draftNode.sortOrder === '' ||
-          draftNode.sortOrder === null ||
-          draftNode.sortOrder === undefined
-            ? 0
-            : Number(draftNode.sortOrder),
+        sortOrder: sortOrderValue ?? 0,
         plannedStart: draftNode.plannedStart || null,
         plannedEnd: draftNode.plannedEnd || null,
-        plannedHours:
-          plannedHoursValue === '' ||
-          plannedHoursValue === null ||
-          plannedHoursValue === undefined
-            ? null
-            : Number(plannedHoursValue),
-        actualHours:
-          actualHoursValue === '' ||
-          actualHoursValue === null ||
-          actualHoursValue === undefined
-            ? null
-            : Number(actualHoursValue),
+        plannedHours: plannedHoursNumber,
+        actualHours: actualHoursNumber,
         isBlocked: Boolean(draftNode.isBlocked),
         comment: draftNode.comment ?? '',
         isActive: draftNode.isActive ?? draftNode.active ?? true,
@@ -379,20 +430,17 @@ function App() {
         setDetailMode('view-edit')
         await loadResourceAssignments(selectedProject.id, refreshedNode.id)
       } else {
-        setSelectedNode(null)
-        setDraftNode(null)
-        setDetailMode('empty')
-        setResourceAssignments([])
-        setResourceAssignmentsError('')
-        setAssignmentActionError('')
+        resetDetailState()
       }
 
       const refreshedDashboard = await getProjectDashboard(selectedProject.id)
       setDashboard(refreshedDashboard)
 
       setIsDirty(false)
+      setLastCreatedNode(null)
       setToast({
         type: 'success',
+        action: 'save-node',
         message: 'Der WBS-Knoten wurde gespeichert.',
       })
     } catch (err) {
@@ -415,6 +463,7 @@ function App() {
       isNodeMeaningfullyEmpty(draftNode)
     ) {
       try {
+        setError('')
         await deactivateWbsNode(selectedProject.id, draftNode.id)
 
         const refreshedTree = await getWbsTree(selectedProject.id)
@@ -422,14 +471,8 @@ function App() {
 
         setWbsTree(Array.isArray(refreshedTree) ? refreshedTree : [])
         setDashboard(refreshedDashboard)
-        setSelectedNode(null)
-        setDraftNode(null)
-        setDetailMode('empty')
-        setIsDirty(false)
+        resetDetailState()
         setLastCreatedNode(null)
-        setResourceAssignments([])
-        setResourceAssignmentsError('')
-        setAssignmentActionError('')
 
         setToast({
           type: 'info',
@@ -515,6 +558,7 @@ function App() {
 
       setToast({
         type: 'success',
+        action: 'create-node',
         message: 'Neues Element wurde angelegt. Bitte jetzt einen Titel vergeben.',
       })
     } catch (err) {
@@ -538,6 +582,7 @@ function App() {
     }
 
     try {
+      setError('')
       await deactivateWbsNode(selectedProject.id, selectedNode.id)
 
       const refreshedTree = await getWbsTree(selectedProject.id)
@@ -545,13 +590,11 @@ function App() {
 
       setWbsTree(Array.isArray(refreshedTree) ? refreshedTree : [])
       setDashboard(refreshedDashboard)
-      setSelectedNode(null)
-      setDraftNode(null)
-      setDetailMode('empty')
-      setIsDirty(false)
-      setResourceAssignments([])
-      setResourceAssignmentsError('')
-      setAssignmentActionError('')
+      resetDetailState()
+
+      if (lastCreatedNode?.id === selectedNode.id) {
+        setLastCreatedNode(null)
+      }
 
       setToast({
         type: 'info',
@@ -572,6 +615,7 @@ function App() {
     }
 
     try {
+      setError('')
       await deactivateWbsNode(selectedProject.id, lastCreatedNode.id)
 
       const refreshedTree = await getWbsTree(selectedProject.id)
@@ -579,13 +623,7 @@ function App() {
 
       setWbsTree(Array.isArray(refreshedTree) ? refreshedTree : [])
       setDashboard(refreshedDashboard)
-      setSelectedNode(null)
-      setDraftNode(null)
-      setDetailMode('empty')
-      setIsDirty(false)
-      setResourceAssignments([])
-      setResourceAssignmentsError('')
-      setAssignmentActionError('')
+      resetDetailState()
 
       setToast({
         type: 'info',
@@ -619,6 +657,7 @@ function App() {
 
       setToast({
         type: 'success',
+        action: 'create-assignment',
         message: 'Ressourcen-Zuordnung wurde angelegt.',
       })
     } catch (err) {
@@ -738,6 +777,8 @@ function App() {
           onProjectChange={handleProjectChange}
         />
 
+        <NavigationTabs currentTab={currentTab} onChange={setCurrentTab} />
+
         {error && <div className="error-banner">{error}</div>}
 
         {masterDataError && <div className="error-banner">{masterDataError}</div>}
@@ -795,11 +836,13 @@ function App() {
           <div className={`toast ${toast.type || 'info'}`}>
             <span>{toast.message}</span>
 
-            {lastCreatedNode && toast.type === 'success' && (
-              <button type="button" onClick={handleUndoLastCreate}>
-                Rückgängig
-              </button>
-            )}
+            {lastCreatedNode &&
+              toast.type === 'success' &&
+              toast.action === 'create-node' && (
+                <button type="button" onClick={handleUndoLastCreate}>
+                  Rückgängig
+                </button>
+              )}
 
             <button type="button" onClick={() => setToast(null)}>
               Schließen

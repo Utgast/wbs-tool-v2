@@ -14,4 +14,10 @@ public class ProjectDashboardDto
 
     public int BlockedNodes { get; set; }
     public int OverdueNodes { get; set; }
+
+    public decimal PlannedDemandHours { get; set; }
+    public decimal AssignedHours { get; set; }
+    public decimal OpenHours { get; set; }
+    public decimal CapacityHours { get; set; }
+    public decimal UtilizationPercent { get; set; }
 }

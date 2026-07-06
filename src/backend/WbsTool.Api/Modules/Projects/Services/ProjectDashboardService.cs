@@ -44,7 +44,9 @@ public class ProjectDashboardService : IProjectDashboardService
 
         if (totalPlannedHours > 0)
         {
-            progressPercent = Math.Round((totalActualHours / totalPlannedHours) * 100m, 2);
+            progressPercent = Math.Round(
+                (totalActualHours / totalPlannedHours) * 100m,
+                2);
         }
 
         var blockedNodes = activeNodes.Count(n =>
@@ -64,17 +66,28 @@ public class ProjectDashboardService : IProjectDashboardService
             n.Status.Code != "Delivered" &&
             n.Status.Code != "Done");
 
+        var resourceOverview = GetResourceOverview(projectId);
+
         return new ProjectDashboardDto
         {
             ProjectId = project.Id,
             ProjectName = project.Name,
+
             TotalPlannedHours = totalPlannedHours,
             TotalActualHours = totalActualHours,
             TotalPlannedCost = totalPlannedCost,
             TotalActualCost = totalActualCost,
+
             ProgressPercent = progressPercent,
+
             BlockedNodes = blockedNodes,
-            OverdueNodes = overdueNodes
+            OverdueNodes = overdueNodes,
+
+            PlannedDemandHours = resourceOverview?.PlannedDemandHours ?? 0m,
+            AssignedHours = resourceOverview?.AssignedHours ?? 0m,
+            OpenHours = resourceOverview?.OpenHours ?? 0m,
+            CapacityHours = resourceOverview?.CapacityHours ?? 0m,
+            UtilizationPercent = resourceOverview?.UtilizationPercent ?? 0m
         };
     }
 
