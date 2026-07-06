@@ -3,6 +3,7 @@ using WbsTool.Api.Data;
 using WbsTool.Api.Modules.Persons.Services;
 using WbsTool.Api.Modules.Projects.Services;
 using WbsTool.Api.Modules.RateCategories.Services;
+using WbsTool.Api.Modules.ResourceDemands.Services;
 using WbsTool.Api.Modules.Seed.Services;
 using WbsTool.Api.Modules.TaskStatuses.Services;
 using WbsTool.Api.Modules.Wbs.Services;
@@ -38,6 +39,7 @@ builder.Services.AddScoped<IResourceAssignmentService, ResourceAssignmentService
 builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IRateCategoryService, RateCategoryService>();
 builder.Services.AddScoped<ITaskStatusService, TaskStatusService>();
+builder.Services.AddScoped<IResourceDemandService, ResourceDemandService>();
 
 builder.Services.AddScoped<IAmprionPqSeedService, AmprionPqSeedService>();
 
