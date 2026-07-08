@@ -1,53 +1,62 @@
-export default function NavigationTabs({ currentTab, onChange }) {
+export default function NavigationTabs({
+  currentTab,
+  onChange,
+}) {
+  const tabs = [
+    { key: 'dashboard', label: ' Dashboard' },
+    { key: 'wbs', label: ' WBS' },
+    { key: 'resources', label: ' Ressourcen' },
+    { key: 'competencies', label: ' Kompetenzen' },
+    { key: 'processes', label: ' Prozesse' },
+    { key: 'administration', label: ' Administration' },
+  ]
+
   return (
-    <div className="navigation-tabs">
-      <button
-        type="button"
-        className={currentTab === 'dashboard' ? 'active' : ''}
-        onClick={() => onChange('dashboard')}
-      >
-        Dashboard
-      </button>
+    <nav
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '10px',
+        padding: '16px',
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        marginBottom: '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      }}
+    >
+      {tabs.map((tab) => {
+        const active = currentTab === tab.key
 
-      <button
-        type="button"
-        className={currentTab === 'wbs' ? 'active' : ''}
-        onClick={() => onChange('wbs')}
-      >
-        WBS
-      </button>
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            style={{
+              border: 'none',
+              cursor: 'pointer',
+              padding: '12px 18px',
+              borderRadius: '10px',
+              transition: 'all 0.2s ease',
 
-      <button
-        type="button"
-        className={currentTab === 'resources' ? 'active' : ''}
-        onClick={() => onChange('resources')}
-      >
-        Ressourcen
-      </button>
+              backgroundColor: active
+                ? '#F58220'
+                : '#f3f4f6',
 
-      <button
-        type="button"
-        className={currentTab === 'competencies' ? 'active' : ''}
-        onClick={() => onChange('competencies')}
-      >
-        Kompetenzen
-      </button>
+              color: active
+                ? '#ffffff'
+                : '#374151',
 
-      <button
-        type="button"
-        className={currentTab === 'processes' ? 'active' : ''}
-        onClick={() => onChange('processes')}
-      >
-        Prozesse
-      </button>
+              fontWeight: active ? '700' : '500',
 
-      <button
-        type="button"
-        className={currentTab === 'administration' ? 'active' : ''}
-        onClick={() => onChange('administration')}
-      >
-        Administration
-      </button>
-    </div>
+              boxShadow: active
+                ? '0 4px 10px rgba(245,130,32,0.35)'
+                : 'none',
+            }}
+          >
+            {tab.label}
+          </button>
+        )
+      })}
+    </nav>
   )
 }

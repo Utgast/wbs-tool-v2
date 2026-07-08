@@ -980,3 +980,38 @@ button.danger {
     min-width: 0;
   }
 }
+.admin-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.admin-card {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.admin-card.locked {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.admin-card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 18px;
+  color: #111827;
+}
+
+.admin-card p {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.4;
+}

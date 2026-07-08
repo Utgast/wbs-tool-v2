@@ -1,0 +1,295 @@
+import { DndContext } from '@dnd-kit/core'
+import { useEffect, useRef, useState } from 'react'
+import './App.css'
+import NavigationTabs from './components/NavigationTabs'
+import ProjectHeader from './components/ProjectHeader'
+import TemplatePalette from './components/TemplatePalette'
+import WbsDetailPanel from './components/WbsDetailPanel'
+import WbsTreePanel from './components/WbsTreePanel'
+
+import {
+  createWbsNode,
+  deactivateWbsNode,
+  getProjectDashboard,
+  getProjects,
+  getWbsTree,
+  updateWbsNode,
+} from './services/api'
+
+import { getPersons } from './services/personsApi'
+import { getRateCategories } from './services/rateCategoriesApi'
+import {
+  createResourceAssignment,
+  getResourceAssignments,
+} from './services/resourceAssignmentsApi'
+import { getTaskStatuses } from './services/taskStatusesApi'
+
+import {
+  buildCreatePayload,
+  canCreateUnder,
+  findNodeInTree,
+  flattenTree,
+  getCreateValidationMessage,
+  isNodeMeaningfullyEmpty,
+  WBS_NODE_TYPES,
+} from './utils/wbsRules'
+
+const LAST_SELECTED_PROJECT_ID_KEY = 'wbs-tool:last-selected-project-id'
+
+function App() {
+  const [projects, setProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState(null)
+
+  const [dashboard, setDashboard] = useState(null)
+  const [wbsTree, setWbsTree] = useState([])
+
+  const [selectedNode, setSelectedNode] = useState(null)
+  const [detailMode, setDetailMode] = useState('empty')
+  const [draftNode, setDraftNode] = useState(null)
+
+  const [isDirty, setIsDirty] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const [lastCreatedNode, setLastCreatedNode] = useState(null)
+
+  const [loadingProjects, setLoadingProjects] = useState(false)
+  const [loadingWorkspace, setLoadingWorkspace] = useState(false)
+
+  const [error, setError] = useState('')
+  const [toast, setToast] = useState(null)
+
+  const [activeDragTemplateType, setActiveDragTemplateType] = useState(null)
+
+  const [persons, setPersons] = useState([])
+  const [rateCategories, setRateCategories] = useState([])
+  const [taskStatuses, setTaskStatuses] = useState([])
+
+  const [masterDataLoading, setMasterDataLoading] = useState(false)
+  const [masterDataError, setMasterDataError] = useState('')
+
+  const [resourceAssignments, setResourceAssignments] = useState([])
+  const [resourceAssignmentsLoading, setResourceAssignmentsLoading] = useState(false)
+  const [resourceAssignmentsError, setResourceAssignmentsError] = useState('')
+
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
+  const [assignmentActionError, setAssignmentActionError] = useState('')
+
+  const [currentTab, setCurrentTab] = useState('wbs')
+
+  const workspaceRequestRef = useRef(0)
+  const assignmentsRequestRef = useRef(0)
+
+  useEffect(() => {
+    loadProjects()
+    loadMasterData()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedProject?.id) {
+      resetWorkspaceState()
+      return
+    }
+
+    loadWorkspace(selectedProject.id)
+  }, [selectedProject])
+
+  function resetDetailState() {
+    setSelectedNode(null)
+    setDraftNode(null)
+    setDetailMode('empty')
+    setIsDirty(false)
+    setResourceAssignments([])
+    setResourceAssignmentsError('')
+    setAssignmentActionError('')
+  }
+
+  function resetWorkspaceState() {
+    setDashboard(null)
+    setWbsTree([])
+    setLastCreatedNode(null)
+    resetDetailState()
+  }
+
+  function getStoredProjectId() {
+    try {
+      return localStorage.getItem(LAST_SELECTED_PROJECT_ID_KEY)
+    } catch {
+      return null
+    }
+  }
+
+  function storeProjectId(projectId) {
+    try {
+      if (projectId) {
+        localStorage.setItem(LAST_SELECTED_PROJECT_ID_KEY, String(projectId))
+      }
+    } catch {
+      // App soll auch funktionieren, falls localStorage blockiert ist.
+    }
+  }
+
+  function toNullableNumber(value) {
+    if (value === '' || value === null || value === undefined) {
+      return null
+    }
+
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+
+  async function loadProjects() {
+    setLoadingProjects(true)
+    setError('')
+
+    try {
+      const data = await getProjects()
+      const safeProjects = Array.isArray(data) ? data : []
+
+      setProjects(safeProjects)
+
+      if (safeProjects.length > 0) {
+        const storedProjectId = getStoredProjectId()
+
+        const rememberedProject =
+          safeProjects.find((project) => String(project.id) === String(storedProjectId)) || null
+
+        const nextSelectedProject = rememberedProject || safeProjects[0]
+
+        setSelectedProject(nextSelectedProject)
+
+        if (nextSelectedProject?.id) {
+          storeProjectId(nextSelectedProject.id)
+        }
+      } else {
+        setSelectedProject(null)
+      }
+    } catch (err) {
+      setError(err.message || 'Fehler beim Laden der Projekte')
+    } finally {
+      setLoadingProjects(false)
+    }
+  }
+
+  async function loadMasterData() {
+    setMasterDataLoading(true)
+    setMasterDataError('')
+
+    try {
+      const [personsData, rateCategoriesData, taskStatusesData] = await Promise.all([
+        getPersons(),
+        getRateCategories(),
+        getTaskStatuses(),
+      ])
+
+      setPersons(Array.isArray(personsData) ? personsData : [])
+      setRateCategories(Array.isArray(rateCategoriesData) ? rateCategoriesData : [])
+      setTaskStatuses(Array.isArray(taskStatusesData) ? taskStatusesData : [])
+    } catch (err) {
+      setMasterDataError(err.message || 'Stammdaten konnten nicht geladen werden')
+    } finally {
+      setMasterDataLoading(false)
+    }
+  }
+
+  async function loadResourceAssignments(projectId, wbsNodeId) {
+    const requestId = ++assignmentsRequestRef.current
+
+    if (!projectId || !wbsNodeId) {
+      setResourceAssignments([])
+      setResourceAssignmentsError('')
+      setResourceAssignmentsLoading(false)
+      return
+    }
+
+    setResourceAssignmentsLoading(true)
+    setResourceAssignmentsError('')
+
+    try {
+      const assignments = await getResourceAssignments(projectId, wbsNodeId)
+
+      if (requestId !== assignmentsRequestRef.current) {
+        return
+      }
+
+      setResourceAssignments(Array.isArray(assignments) ? assignments : [])
+    } catch (err) {
+      if (requestId !== assignmentsRequestRef.current) {
+        return
+      }
+
+      setResourceAssignments([])
+      setResourceAssignmentsError(
+        err.message || 'Ressourcen-Zuordnungen konnten nicht geladen werden'
+      )
+    } finally {
+      if (requestId === assignmentsRequestRef.current) {
+        setResourceAssignmentsLoading(false)
+      }
+    }
+  }
+
+  async function loadWorkspace(projectId) {
+    const requestId = ++workspaceRequestRef.current
+
+    setLoadingWorkspace(true)
+    setError('')
+    setResourceAssignments([])
+    setResourceAssignmentsError('')
+    setAssignmentActionError('')
+
+    try {
+      const [dashboardData, treeData] = await Promise.all([
+        getProjectDashboard(projectId),
+        getWbsTree(projectId),
+      ])
+
+      if (requestId !== workspaceRequestRef.current) {
+        return
+      }
+
+      setDashboard(dashboardData)
+      setWbsTree(Array.isArray(treeData) ? treeData : [])
+      setSelectedNode(null)
+      setDraftNode(null)
+      setDetailMode('empty')
+      setLastCreatedNode(null)
+      setIsDirty(false)
+    } catch (err) {
+      if (requestId !== workspaceRequestRef.current) {
+        return
+      }
+
+      setError(err.message || 'Fehler beim Laden des Arbeitsbereichs')
+      setDashboard(null)
+      setWbsTree([])
+      setSelectedNode(null)
+      setDraftNode(null)
+      setDetailMode('empty')
+      setLastCreatedNode(null)
+      setIsDirty(false)
+      setResourceAssignments([])
+      setResourceAssignmentsError('')
+      setAssignmentActionError('')
+    } finally {
+      if (requestId === workspaceRequestRef.current) {
+        setLoadingWorkspace(false)
+      }
+    }
+  }
+
+  function handleProjectChange(event) {
+    const projectId = event.target.value
+    const project = projects.find((item) => String(item.id) === String(projectId)) || null
+
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'Es gibt ungespeicherte Änderungen. Projekt wirklich wechseln?'
+      )
+
+      if (!confirmed) {
+        return
+      }
+    }
+
+    setSelectedProject(project)
+    st

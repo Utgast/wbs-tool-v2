@@ -6,6 +6,8 @@ import ProjectHeader from './components/ProjectHeader'
 import TemplatePalette from './components/TemplatePalette'
 import WbsDetailPanel from './components/WbsDetailPanel'
 import WbsTreePanel from './components/WbsTreePanel'
+import AdministrationPage from './pages/AdministrationPage'
+import DashboardPage from './pages/DashboardPage'
 
 import {
   createWbsNode,
@@ -249,6 +251,7 @@ function App() {
 
       setDashboard(dashboardData)
       setWbsTree(Array.isArray(treeData) ? treeData : [])
+      console.log('WBS TREE RAW', treeData)
       setSelectedNode(null)
       setDraftNode(null)
       setDetailMode('empty')
@@ -301,6 +304,7 @@ function App() {
   }
 
   function handleSelectNode(node) {
+    console.log('SELECT NODE', node)
     setSelectedNode(node)
     setDraftNode({ ...node })
     setDetailMode('view-edit')
@@ -789,48 +793,97 @@ function App() {
           </div>
         )}
 
-        <main className="workspace-grid">
-          <TemplatePalette
-            selectedProject={selectedProject}
-            selectedNode={selectedNode}
-            onCreateFromTemplate={handleCreateFromTemplate}
-          />
+        {currentTab === 'dashboard' && (
+          <main className="workspace-grid">
+            <DashboardPage
+              dashboard={dashboard}
+              wbsNodes={wbsTree}
+              onOpenWbsNode={(node) => {
+                handleSelectNode(node)
+                setCurrentTab('wbs')
+              }}
+            />
 
-          <WbsTreePanel
-            selectedProject={selectedProject}
-            loadingWorkspace={loadingWorkspace}
-            wbsTree={wbsTree}
-            selectedNodeId={selectedNode?.id}
-            totalNodeCount={flatNodes.length}
-            onSelectNode={handleSelectNode}
-            onEditNode={handleEditNode}
-            onDeactivateNode={handleDeactivateNodeFromTree}
-            activeDragTemplateType={activeDragTemplateType}
-          />
+          </main>
+        )}
 
-          <WbsDetailPanel
-            detailMode={detailMode}
-            draftNode={draftNode}
-            isDirty={isDirty}
-            isSaving={isSaving}
-            selectedNode={selectedNode}
-            onDraftChange={handleDraftChange}
-            onSaveDraft={handleSaveDraft}
-            onCancelDraft={handleCancelDraft}
-            onDeactivateSelectedNode={handleDeactivateSelectedNode}
-            persons={persons}
-            rateCategories={rateCategories}
-            taskStatuses={taskStatuses}
-            masterDataLoading={masterDataLoading}
-            masterDataError={masterDataError}
-            resourceAssignments={resourceAssignments}
-            resourceAssignmentsLoading={resourceAssignmentsLoading}
-            resourceAssignmentsError={resourceAssignmentsError}
-            isCreatingAssignment={isCreatingAssignment}
-            assignmentActionError={assignmentActionError}
-            onCreateAssignment={handleCreateAssignment}
-          />
-        </main>
+        {currentTab === 'wbs' && (
+          <main className="workspace-grid">
+            <TemplatePalette
+              selectedProject={selectedProject}
+              selectedNode={selectedNode}
+              onCreateFromTemplate={handleCreateFromTemplate}
+            />
+
+            <WbsTreePanel
+              selectedProject={selectedProject}
+              loadingWorkspace={loadingWorkspace}
+              wbsTree={wbsTree}
+              selectedNodeId={selectedNode?.id}
+              totalNodeCount={flatNodes.length}
+              onSelectNode={handleSelectNode}
+              onEditNode={handleEditNode}
+              onDeactivateNode={handleDeactivateNodeFromTree}
+              activeDragTemplateType={activeDragTemplateType}
+            />
+
+            <WbsDetailPanel
+              detailMode={detailMode}
+              draftNode={draftNode}
+              isDirty={isDirty}
+              isSaving={isSaving}
+              selectedNode={selectedNode}
+              onDraftChange={handleDraftChange}
+              onSaveDraft={handleSaveDraft}
+              onCancelDraft={handleCancelDraft}
+              onDeactivateSelectedNode={handleDeactivateSelectedNode}
+              persons={persons}
+              rateCategories={rateCategories}
+              taskStatuses={taskStatuses}
+              masterDataLoading={masterDataLoading}
+              masterDataError={masterDataError}
+              resourceAssignments={resourceAssignments}
+              resourceAssignmentsLoading={resourceAssignmentsLoading}
+              resourceAssignmentsError={resourceAssignmentsError}
+              isCreatingAssignment={isCreatingAssignment}
+              assignmentActionError={assignmentActionError}
+              onCreateAssignment={handleCreateAssignment}
+            />
+          </main>
+        )}
+
+        {currentTab === 'resources' && (
+          <main className="workspace-grid">
+            <section className="page-placeholder">
+              <h2>Ressourcen</h2>
+              <p>Dieses Modul ist im aktuellen Stand noch nicht erweitert.</p>
+            </section>
+          </main>
+        )}
+
+        {currentTab === 'skills' && (
+          <main className="workspace-grid">
+            <section className="page-placeholder">
+              <h2>Kompetenzen</h2>
+              <p>Dieses Modul ist im aktuellen Stand noch nicht erweitert.</p>
+            </section>
+          </main>
+        )}
+
+        {currentTab === 'processes' && (
+          <main className="workspace-grid">
+            <section className="page-placeholder">
+              <h2>Prozesse</h2>
+              <p>Dieses Modul ist im aktuellen Stand noch nicht erweitert.</p>
+            </section>
+          </main>
+        )}
+
+        {currentTab === 'administration' && (
+          <main className="workspace-grid">
+            <AdministrationPage />
+          </main>
+        )}
 
         {toast && (
           <div className={`toast ${toast.type || 'info'}`}>
