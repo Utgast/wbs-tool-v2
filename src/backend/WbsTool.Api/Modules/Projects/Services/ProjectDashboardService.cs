@@ -67,6 +67,7 @@ public class ProjectDashboardService : IProjectDashboardService
             n.Status.Code != "Done");
 
         var resourceOverview = GetResourceOverview(projectId);
+        var competencyOverview = GetCompetencyOverview(projectId);
 
         return new ProjectDashboardDto
         {
@@ -86,8 +87,14 @@ public class ProjectDashboardService : IProjectDashboardService
             PlannedDemandHours = resourceOverview?.PlannedDemandHours ?? 0m,
             AssignedHours = resourceOverview?.AssignedHours ?? 0m,
             OpenHours = resourceOverview?.OpenHours ?? 0m,
+
             CapacityHours = resourceOverview?.CapacityHours ?? 0m,
-            UtilizationPercent = resourceOverview?.UtilizationPercent ?? 0m
+            UtilizationPercent = resourceOverview?.UtilizationPercent ?? 0m,
+
+            RequiredCompetencies = competencyOverview.RequiredCompetencies,
+            CoveredCompetencies = competencyOverview.CoveredCompetencies,
+            MissingCompetencies = competencyOverview.MissingCompetencies,
+            CompetencyCoveragePercent = competencyOverview.CompetencyCoveragePercent
         };
     }
 
@@ -147,5 +154,65 @@ public class ProjectDashboardService : IProjectDashboardService
             CapacityHours = capacityHours,
             UtilizationPercent = utilizationPercent
         };
+    }
+
+    private ProjectCompetencyOverview GetCompetencyOverview(Guid projectId)
+    {
+        var requiredCompetencyIds = (
+            from requiredCompetency in _dbContext.WbsRequiredCompetencies.AsNoTracking()
+            join wbsNode in _dbContext.WbsNodes.AsNoTracking()
+                on requiredCompetency.WbsNodeId equals wbsNode.Id
+            where requiredCompetency.ProjectId == projectId
+                  && wbsNode.IsActive
+            select requiredCompetency.CompetencyId
+        )
+        .Distinct()
+        .ToList();
+
+        var availableCompetencyIds = (
+            from personCompetency in _dbContext.PersonCompetencies.AsNoTracking()
+            join person in _dbContext.Persons.AsNoTracking()
+                on personCompetency.PersonId equals person.Id
+            where personCompetency.IsActive
+                  && person.IsActive
+            select personCompetency.CompetencyId
+        )
+        .Distinct()
+        .ToList();
+
+        var coveredCompetencies = requiredCompetencyIds
+            .Intersect(availableCompetencyIds)
+            .Count();
+
+        var missingCompetencies = requiredCompetencyIds
+            .Except(availableCompetencyIds)
+            .Count();
+
+        var requiredCompetencies = requiredCompetencyIds.Count;
+
+        var competencyCoveragePercent = 0m;
+
+        if (requiredCompetencies > 0)
+        {
+            competencyCoveragePercent = Math.Round(
+                (decimal)coveredCompetencies / requiredCompetencies * 100m,
+                2);
+        }
+
+        return new ProjectCompetencyOverview
+        {
+            RequiredCompetencies = requiredCompetencies,
+            CoveredCompetencies = coveredCompetencies,
+            MissingCompetencies = missingCompetencies,
+            CompetencyCoveragePercent = competencyCoveragePercent
+        };
+    }
+
+    private class ProjectCompetencyOverview
+    {
+        public int RequiredCompetencies { get; set; }
+        public int CoveredCompetencies { get; set; }
+        public int MissingCompetencies { get; set; }
+        public decimal CompetencyCoveragePercent { get; set; }
     }
 }

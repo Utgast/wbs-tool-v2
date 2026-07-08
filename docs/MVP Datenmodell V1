@@ -1,0 +1,13 @@
+Project
+WbsNode
+
+Person
+Competence
+PersonCompetence
+
+Assignment
+CapacityEntry
+
+ResourceDemand
+
+ProjectDashboardSnapshot (optional)

@@ -794,7 +794,7 @@ function App() {
         )}
 
         {currentTab === 'dashboard' && (
-          <main className="workspace-grid">
+          <main className="workspace-dashboard">
             <DashboardPage
               dashboard={dashboard}
               wbsNodes={wbsTree}

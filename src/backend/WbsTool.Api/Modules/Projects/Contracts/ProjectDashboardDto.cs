@@ -20,4 +20,9 @@ public class ProjectDashboardDto
     public decimal OpenHours { get; set; }
     public decimal CapacityHours { get; set; }
     public decimal UtilizationPercent { get; set; }
+
+public int RequiredCompetencies { get; set; }
+public int CoveredCompetencies { get; set; }
+public int MissingCompetencies { get; set; }
+public decimal CompetencyCoveragePercent { get; set; }
 }

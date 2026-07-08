@@ -121,6 +121,18 @@ button:disabled {
 /* =========================
    Main Workspace Layout
    ========================= */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(420px, 1fr) 420px;
+  gap: 16px;
+  align-items: start;
+}
+
+.workspace-dashboard {
+ width: 100%;
+  display: block;
+}
+
 
 .workspace-grid {
   display: grid;
@@ -128,6 +140,7 @@ button:disabled {
   gap: 16px;
   align-items: start;
 }
+
 
 .panel,
 .template-palette,

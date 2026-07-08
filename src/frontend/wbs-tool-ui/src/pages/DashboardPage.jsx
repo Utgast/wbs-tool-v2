@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState } from 'react';
+import DashboardHeader from '../components/dashboard/DashboardHeader';
+import HandlungsbedarfPanel from '../components/dashboard/HandlungsbedarfPanel';
 
 export default function DashboardPage({
   dashboard,
   wbsNodes = [],
   onOpenWbsNode,
 }) {
-  const [activeTile, setActiveTile] = useState('overview')
+  const [activeTile, setActiveTile] = useState('overview');
 
   if (!dashboard) {
     return (
@@ -13,45 +15,42 @@ export default function DashboardPage({
         <h2>Projektcockpit</h2>
         <p>Keine Dashboard-Daten vorhanden.</p>
       </section>
-    )
+    );
   }
 
-  const progressPercent = dashboard.progressPercent ?? 0
-  const totalPlannedHours = dashboard.totalPlannedHours ?? 0
-  const totalActualHours = dashboard.totalActualHours ?? 0
-  const blockedNodes = dashboard.blockedNodes ?? 0
-  const overdueNodes = dashboard.overdueNodes ?? 0
+  const progressPercent = dashboard.progressPercent ?? 0;
+  const totalPlannedHours = dashboard.totalPlannedHours ?? 0;
+  const totalActualHours = dashboard.totalActualHours ?? 0;
+  const blockedNodes = dashboard.blockedNodes ?? 0;
+  const overdueNodes = dashboard.overdueNodes ?? 0;
 
-  const plannedDemandHours = dashboard.plannedDemandHours ?? 0
-  const assignedHours = dashboard.assignedHours ?? 0
-  const rawOpenHours = dashboard.openHours ?? 0
-  const capacityHours = dashboard.capacityHours ?? 0
-  const utilizationPercent = dashboard.utilizationPercent ?? 0
+  const plannedDemandHours = dashboard.plannedDemandHours ?? 0;
+  const assignedHours = dashboard.assignedHours ?? 0;
+  const rawOpenHours = dashboard.openHours ?? 0;
+  const capacityHours = dashboard.capacityHours ?? 0;
+  const utilizationPercent = dashboard.utilizationPercent ?? 0;
 
   const openDisplay =
     rawOpenHours < 0
       ? `Überdeckt: ${formatNumber(Math.abs(rawOpenHours))} h`
-      : `${formatNumber(rawOpenHours)} h`
+      : `${formatNumber(rawOpenHours)} h`;
 
   const openStatus =
     rawOpenHours < 0
       ? 'warning'
       : rawOpenHours === 0
       ? 'success'
-      : 'danger'
+      : 'danger';
 
   const utilizationStatus =
     utilizationPercent > 110
       ? 'danger'
       : utilizationPercent > 90
       ? 'warning'
-      : 'success'
+      : 'success';
 
-  const overdueStatus =
-    overdueNodes > 0 ? 'danger' : 'success'
-
-  const blockedStatus =
-    blockedNodes > 0 ? 'warning' : 'success'
+  const overdueStatus = overdueNodes > 0 ? 'danger' : 'success';
+  const blockedStatus = blockedNodes > 0 ? 'warning' : 'success';
 
   return (
     <section
@@ -62,15 +61,24 @@ export default function DashboardPage({
         gap: '20px',
       }}
     >
-     
-<DashboardHeader
-  projectName={dashboard.projectName}
-  activeTile={activeTile}
-  onReset={() => setActiveTile('overview')}
-/>
+     <DashboardHeader
+      projectName={dashboard.projectName}
+      progressPercent={progressPercent}
+      riskCount={overdueNodes + blockedNodes}
+      competencyCoverage={dashboard.competencyCoveragePercent ?? 0}
+      utilizationPercent={utilizationPercent}
+    />
+
+      
+      <HandlungsbedarfPanel
+        overdueNodes={overdueNodes}
+        blockedNodes={blockedNodes}
+        openHours={rawOpenHours}
+        utilizationPercent={utilizationPercent}
+      />
 
 
-      <DashboardSection title="Handlungsbedarf">
+      <DashboardSection title="Details Handlungsbedarf">
         <InteractiveKpiTile
           id="overdue"
           title="Überfällig"
@@ -183,46 +191,71 @@ export default function DashboardPage({
           onClick={setActiveTile}
         />
       </DashboardSection>
-      
-      
-<DashboardSection title="WBS-Hauptpakete">
-  {wbsNodes.map((node) => (
-    <button
-      key={node.id}
-      type="button"
-      onClick={() => onOpenWbsNode?.(node)}
-      style={{
-        textAlign: 'left',
-        border: '1px solid #e5e7eb',
-        borderRadius: '14px',
-        padding: '16px',
-        backgroundColor: '#ffffff',
-        cursor: 'pointer',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-      }}
-    >
-      <div
-        style={{
-          fontSize: '12px',
-          color: '#6b7280',
-          marginBottom: '6px',
-        }}
-      >
-        Hauptpaket {node.visibleWbsId}
-      </div>
 
-      <div
-        style={{
-          fontWeight: '700',
-          fontSize: '18px',
-          color: '#111827',
-        }}
-      >
-        {node.title}
-      </div>
-    </button>
-  ))}
-</DashboardSection>
+      <DashboardSection title="WBS-Hauptpakete">
+        {wbsNodes.map((node) => (
+          <button
+            key={node.id}
+            type="button"
+            onClick={() => onOpenWbsNode?.(node)}
+           style={{
+  textAlign: 'left',
+  border: '1px solid #e5e7eb',
+  borderRadius: '16px',
+  padding: '20px',
+  backgroundColor: '#ffffff',
+  cursor: 'pointer',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+
+  minHeight: '140px',
+
+  width: '320px',
+  alignSelf: 'start',
+
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+
+  transition: 'all 0.15s ease',
+}}
+          >
+            <div
+  style={{
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  }}
+>
+  Hauptpaket {node.visibleWbsId}
+</div>
+
+           <div>
+  <div
+    style={{
+      fontWeight: '800',
+      fontSize: '20px',
+      color: '#111827',
+      marginTop: '10px',
+    }}
+  >
+    {node.title}
+  </div>
+
+  <div
+    style={{
+      marginTop: '12px',
+      color: '#6b7280',
+      fontSize: '13px',
+    }}
+  >
+    Klick zum Öffnen der WBS
+  </div>
+</div>
+          </button>
+        ))}
+      </DashboardSection>
 
       <DashboardDetailPanel
         activeTile={activeTile}
@@ -240,70 +273,13 @@ export default function DashboardPage({
         }}
       />
     </section>
-  )
-}
-
-function DashboardHeader({ projectName, activeTile, onReset }) {
-  return (
-    <div
-      style={{
-        backgroundColor: '#ffffff',
-        border: '1px solid #e5e7eb',
-        borderRadius: '14px',
-        padding: '18px 20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '16px',
-        flexWrap: 'wrap',
-      }}
-    >
-      <div>
-        <h2
-          style={{
-            margin: 0,
-            color: '#111827',
-          }}
-        >
-          Projektcockpit
-        </h2>
-
-        <p
-          style={{
-            margin: '6px 0 0 0',
-            color: '#6b7280',
-            fontSize: '14px',
-          }}
-        >
-          {projectName
-            ? `Aktives Projekt: ${projectName}`
-            : 'Interaktives Steuerungsdashboard'}
-        </p>
-      </div>
-
-      {activeTile !== 'overview' && (
-        <button
-          type="button"
-          onClick={onReset}
-          style={{
-            border: '1px solid #d1d5db',
-            backgroundColor: '#ffffff',
-            borderRadius: '10px',
-            padding: '10px 14px',
-            cursor: 'pointer',
-            fontWeight: '700',
-            color: '#374151',
-          }}
-        >
-          Übersicht anzeigen
-        </button>
-      )}
-    </div>
-  )
+  );
 }
 
 function DashboardSection({ title, children }) {
+  const isMainPackages =
+    title === 'WBS-Hauptpakete';
+
   return (
     <section>
       <h3
@@ -318,16 +294,19 @@ function DashboardSection({ title, children }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '14px',
+
+          gridTemplateColumns: isMainPackages
+            ? 'repeat(auto-fit, minmax(220 1fr))'
+            : 'repeat(auto-fit, minmax(180px, 1fr))',
+
+          gap: isMainPackages ? '20px' : '14px',
         }}
       >
         {children}
       </div>
     </section>
-  )
+  );
 }
-
 function InteractiveKpiTile({
   id,
   title,
@@ -338,8 +317,8 @@ function InteractiveKpiTile({
   activeTile,
   onClick,
 }) {
-  const selected = activeTile === id
-  const config = getStatusConfig(status)
+  const selected = activeTile === id;
+  const config = getStatusConfig(status);
 
   return (
     <button
@@ -396,7 +375,7 @@ function InteractiveKpiTile({
         style={{
           color: config.textColor,
           fontWeight: '800',
-          fontSize: value.length > 12 ? '20px' : '28px',
+          fontSize: String(value).length > 12 ? '20px' : '28px',
           lineHeight: '1.1',
           marginBottom: '8px',
         }}
@@ -425,7 +404,7 @@ function InteractiveKpiTile({
         {description}
       </div>
     </button>
-  )
+  );
 }
 
 function DashboardDetailPanel({ activeTile, dashboard }) {
@@ -467,7 +446,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           />
         </div>
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'overdue') {
@@ -489,7 +468,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           Detail-Endpunkt oder die Übergabe der WBS-Knoten an das Dashboard.
         </DetailHint>
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'blocked') {
@@ -511,17 +490,23 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           werden.
         </DetailHint>
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'open') {
-    const isOvercovered = dashboard.rawOpenHours < 0
-    const value = Math.abs(dashboard.rawOpenHours)
+    const isOvercovered = dashboard.rawOpenHours < 0;
+    const value = Math.abs(dashboard.rawOpenHours);
 
     return (
       <DetailPanel
         title="Offene oder überdeckte Ressourcenstunden"
-        status={isOvercovered ? 'warning' : dashboard.rawOpenHours > 0 ? 'danger' : 'success'}
+        status={
+          isOvercovered
+            ? 'warning'
+            : dashboard.rawOpenHours > 0
+            ? 'danger'
+            : 'success'
+        }
         text={
           isOvercovered
             ? `Der Ressourcenbedarf ist aktuell um ${formatNumber(
@@ -543,7 +528,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           value={`${formatNumber(dashboard.assignedHours)} h`}
         />
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'utilization') {
@@ -574,7 +559,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           nicht nur als Prozentzahl.
         </DetailHint>
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'progress') {
@@ -591,7 +576,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           PlannedStart, PlannedEnd und heutigem Datum verglichen werden.
         </DetailHint>
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'planned') {
@@ -608,7 +593,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           value={`${formatNumber(dashboard.totalPlannedHours)} h`}
         />
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'actual') {
@@ -625,7 +610,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           value={`${formatNumber(dashboard.totalActualHours)} h`}
         />
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'capacity') {
@@ -642,7 +627,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           value={`${formatNumber(dashboard.capacityHours)} h`}
         />
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'demand') {
@@ -659,7 +644,7 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           value={`${formatNumber(dashboard.plannedDemandHours)} h`}
         />
       </DetailPanel>
-    )
+    );
   }
 
   if (activeTile === 'assigned') {
@@ -676,14 +661,14 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           value={`${formatNumber(dashboard.assignedHours)} h`}
         />
       </DetailPanel>
-    )
+    );
   }
 
-  return null
+  return null;
 }
 
 function DetailPanel({ title, status, text, children }) {
-  const config = getStatusConfig(status)
+  const config = getStatusConfig(status);
 
   return (
     <section
@@ -742,7 +727,7 @@ function DetailPanel({ title, status, text, children }) {
         {children}
       </div>
     </section>
-  )
+  );
 }
 
 function DetailFact({ label, value }) {
@@ -778,7 +763,7 @@ function DetailFact({ label, value }) {
         {value}
       </div>
     </div>
-  )
+  );
 }
 
 function DetailHint({ children }) {
@@ -795,7 +780,7 @@ function DetailHint({ children }) {
     >
       {children}
     </div>
-  )
+  );
 }
 
 function getStatusConfig(status) {
@@ -848,17 +833,17 @@ function getStatusConfig(status) {
       selectedBackground: '#f9fafb',
       shadowColor: 'rgba(107,114,128,0.18)',
     },
-  }
+  };
 
-  return configs[status] ?? configs.neutral
+  return configs[status] ?? configs.neutral;
 }
 
 function formatNumber(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '0'
+    return '0';
   }
 
   return new Intl.NumberFormat('de-DE', {
     maximumFractionDigits: 2,
-  }).format(Number(value))
+  }).format(Number(value));
 }
