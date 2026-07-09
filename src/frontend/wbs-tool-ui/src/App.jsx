@@ -7,6 +7,7 @@ import TemplatePalette from './components/TemplatePalette'
 import WbsDetailPanel from './components/WbsDetailPanel'
 import WbsTreePanel from './components/WbsTreePanel'
 import AdministrationPage from './pages/AdministrationPage'
+import CompetenciesPage from './pages/CompetenciesPage'
 import DashboardPage from './pages/DashboardPage'
 
 import {
@@ -861,14 +862,11 @@ function App() {
           </main>
         )}
 
-        {currentTab === 'skills' && (
-          <main className="workspace-grid">
-            <section className="page-placeholder">
-              <h2>Kompetenzen</h2>
-              <p>Dieses Modul ist im aktuellen Stand noch nicht erweitert.</p>
-            </section>
-          </main>
-        )}
+        {currentTab === 'competencies' && (
+        <main className="workspace-dashboard">
+         <CompetenciesPage />
+  </main>
+)}
 
         {currentTab === 'processes' && (
           <main className="workspace-grid">
@@ -908,3 +906,4 @@ function App() {
 }
 
 export default App
+

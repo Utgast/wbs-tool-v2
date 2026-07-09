@@ -11,4 +11,5 @@ public interface ICompetencyService
 
     IEnumerable<WbsRequiredCompetencyDto> GetWbsRequiredCompetencies(Guid wbsNodeId);
     WbsRequiredCompetencyDto AddWbsRequiredCompetency(Guid wbsNodeId, AddWbsRequiredCompetencyRequest request);
+    IEnumerable<CompetencyPersonDto> GetPersonsByCompetency(Guid competencyId);
 }

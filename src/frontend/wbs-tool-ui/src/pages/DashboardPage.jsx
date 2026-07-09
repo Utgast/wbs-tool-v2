@@ -75,7 +75,8 @@ export default function DashboardPage({
         blockedNodes={blockedNodes}
         openHours={rawOpenHours}
         utilizationPercent={utilizationPercent}
-      />
+        missingCompetencies={dashboard?.missingCompetencies ?? 0}
+    />
 
 
       <DashboardSection title="Details Handlungsbedarf">

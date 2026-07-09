@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WbsTool.Api.Data;
 
@@ -10,9 +11,11 @@ using WbsTool.Api.Data;
 namespace WbsTool.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260709134326_SeedOhlCompetencies")]
+    partial class SeedOhlCompetencies
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
@@ -251,58 +254,6 @@ namespace WbsTool.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("PersonCompetencies", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("50000000-0000-0000-0000-000000000001"),
-                            Comment = "Automatisierung und KI",
-                            CompetencyId = new Guid("40000000-0000-0000-0000-000000000008"),
-                            CreatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PersonId = new Guid("30000000-0000-0000-0000-000000000005"),
-                            UpdatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("50000000-0000-0000-0000-000000000002"),
-                            Comment = "FM-Profil",
-                            CompetencyId = new Guid("40000000-0000-0000-0000-000000000001"),
-                            CreatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PersonId = new Guid("30000000-0000-0000-0000-000000000003"),
-                            UpdatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("50000000-0000-0000-0000-000000000003"),
-                            Comment = "CAD",
-                            CompetencyId = new Guid("40000000-0000-0000-0000-000000000002"),
-                            CreatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PersonId = new Guid("30000000-0000-0000-0000-000000000003"),
-                            UpdatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("50000000-0000-0000-0000-000000000004"),
-                            Comment = "CAD",
-                            CompetencyId = new Guid("40000000-0000-0000-0000-000000000002"),
-                            CreatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PersonId = new Guid("30000000-0000-0000-0000-000000000004"),
-                            UpdatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("50000000-0000-0000-0000-000000000005"),
-                            Comment = "GIS",
-                            CompetencyId = new Guid("40000000-0000-0000-0000-000000000003"),
-                            CreatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PersonId = new Guid("30000000-0000-0000-0000-000000000004"),
-                            UpdatedAtUtc = new DateTime(2026, 7, 9, 0, 0, 0, 0, DateTimeKind.Utc)
-                        });
                 });
 
             modelBuilder.Entity("WbsTool.Api.Modules.Competencies.Models.WbsRequiredCompetency", b =>

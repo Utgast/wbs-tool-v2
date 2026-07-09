@@ -3,7 +3,9 @@ export default function HandlungsbedarfPanel({
   blockedNodes = 0,
   openHours = 0,
   utilizationPercent = 0,
+  missingCompetencies = 0,
 }) {
+
   return (
     <section className="action-panel">
       <div className="action-panel-header">
@@ -36,6 +38,12 @@ export default function HandlungsbedarfPanel({
           </strong>
           <span>Auslastung</span>
         </div>
+
+        <div className="action-panel-item">
+        <strong>{missingCompetencies}</strong>
+        <span>Kompetenzlücken</span>
+      </div>
+
       </div>
     </section>
   );

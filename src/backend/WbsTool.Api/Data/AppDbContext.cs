@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Modules.Capacity.Models;
 using WbsTool.Api.Modules.Competencies.Models;
 using WbsTool.Api.Modules.Governance.Models;
@@ -468,6 +468,8 @@ public class AppDbContext : DbContext
         SeedTaskStatuses(modelBuilder);
         SeedRateCategories(modelBuilder);
         SeedPersons(modelBuilder);
+        SeedPersonCompetencies(modelBuilder);
+        SeedCompetencies(modelBuilder);
     }
 
     private static void SeedTaskStatuses(ModelBuilder modelBuilder)
@@ -567,6 +569,114 @@ public class AppDbContext : DbContext
         );
     }
 
+
+    private static void SeedCompetencies(ModelBuilder modelBuilder)
+    {
+        var now = new DateTime(2026, 7, 9, 0, 0, 0, DateTimeKind.Utc);
+
+        modelBuilder.Entity<Competency>().HasData(
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000001"),
+                Code = "FM_PROFIL",
+                Name = "FM-Profil",
+                Description = "Planung und Bearbeitung von Freileitungsprofilen in FM-Profil.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000002"),
+                Code = "CAD",
+                Name = "CAD",
+                Description = "CAD-Bearbeitung fuer Uebersichtsplaene, Lageplaene und technische Planunterlagen.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000003"),
+                Code = "GIS",
+                Name = "GIS",
+                Description = "GIS-Datenverarbeitung, Datenerfassung und Aktualisierung raeumlicher Projektdaten.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000004"),
+                Code = "STATIK",
+                Name = "Statik",
+                Description = "Statische Bemessung und Nachweisfuehrung fuer Freileitungsmaste und Bestandsmaste.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000005"),
+                Code = "EMF",
+                Name = "EMF-Berechnung",
+                Description = "Berechnung elektromagnetischer Felder und Bewertung elektrischer Beeinflussung.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000006"),
+                Code = "SEILBERECHNUNG",
+                Name = "Seilberechnung",
+                Description = "Berechnung von Seilspannungen, Durchhaengen, Passlaengen und zugehoerigen Mengenermittlungen.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000007"),
+                Code = "PROJEKTMANAGEMENT",
+                Name = "Projektmanagement",
+                Description = "Projektsteuerung, Terminplanung, Ressourcenmanagement und Koordination.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000008"),
+                Code = "AUTOMATISIERUNG",
+                Name = "Automatisierung / KI",
+                Description = "Automatisierung, KI-Unterstuetzung, Prozessentwicklung und digitale Werkzeugunterstuetzung.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000009"),
+                Code = "TRASSIERUNG",
+                Name = "Trassierung",
+                Description = "Grob- und Feintrassierung von Freileitungen einschliesslich technischer und raeumlicher Randbedingungen.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new Competency
+            {
+                Id = Guid.Parse("40000000-0000-0000-0000-000000000010"),
+                Code = "MASTKONZEPTE",
+                Name = "Mastkonzepte / Mastkatalog",
+                Description = "Erstellung und Bewertung von Mastkonzepten, Mastkatalogen und technischen Uebersichten.",
+                IsActive = true,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            }
+        );
+    }
     private static void SeedPersons(ModelBuilder modelBuilder)
     {
         var now = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -632,4 +742,55 @@ public class AppDbContext : DbContext
             }
         );
     }
+    
+
+    private static void SeedPersonCompetencies(ModelBuilder modelBuilder)
+    {
+        var now = new DateTime(2026, 7, 9, 0, 0, 0, DateTimeKind.Utc);
+
+        modelBuilder.Entity<PersonCompetency>().HasData(
+            new PersonCompetency
+            {
+                Id = Guid.Parse("50000000-0000-0000-0000-000000000001"),
+                PersonId = PersonDennisId,
+                CompetencyId = Guid.Parse("40000000-0000-0000-0000-000000000008"),                Comment = "Automatisierung und KI",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new PersonCompetency
+            {
+                Id = Guid.Parse("50000000-0000-0000-0000-000000000002"),
+                PersonId = PersonTobiasId,
+                CompetencyId = Guid.Parse("40000000-0000-0000-0000-000000000001"),                Comment = "FM-Profil",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new PersonCompetency
+            {
+                Id = Guid.Parse("50000000-0000-0000-0000-000000000003"),
+                PersonId = PersonTobiasId,
+                CompetencyId = Guid.Parse("40000000-0000-0000-0000-000000000002"),                Comment = "CAD",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new PersonCompetency
+            {
+                Id = Guid.Parse("50000000-0000-0000-0000-000000000004"),
+                PersonId = PersonIbrahimId,
+                CompetencyId = Guid.Parse("40000000-0000-0000-0000-000000000002"),                Comment = "CAD",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new PersonCompetency
+            {
+                Id = Guid.Parse("50000000-0000-0000-0000-000000000005"),
+                PersonId = PersonIbrahimId,
+                CompetencyId = Guid.Parse("40000000-0000-0000-0000-000000000003"),                Comment = "GIS",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            }
+        );
+    }
 }
+
+

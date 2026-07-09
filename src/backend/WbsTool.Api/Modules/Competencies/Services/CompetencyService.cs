@@ -140,4 +140,35 @@ public class CompetencyService : ICompetencyService
             Comment = entry.Comment
         };
     }
+    public IEnumerable<CompetencyPersonDto> GetPersonsByCompetency(Guid competencyId)
+    {
+        return _dbContext.PersonCompetencies
+            .AsNoTracking()
+            .Include(pc => pc.Person)
+            .Include(pc => pc.Competency)
+            .Where(pc =>
+                pc.CompetencyId == competencyId &&
+                pc.IsActive &&
+                pc.Person.IsActive &&
+                pc.Competency.IsActive)
+            .OrderBy(pc => pc.Person.DisplayName)
+            .Select(pc => new CompetencyPersonDto
+            {
+                PersonCompetencyId = pc.Id,
+
+                PersonId = pc.PersonId,
+                PersonDisplayName = pc.Person.DisplayName,
+                PersonShortName = pc.Person.ShortName,
+                PersonEmail = pc.Person.Email,
+
+                CompetencyId = pc.CompetencyId,
+                CompetencyCode = pc.Competency.Code,
+                CompetencyName = pc.Competency.Name,
+
+                ProficiencyLevel = pc.ProficiencyLevel,
+                Comment = pc.Comment,
+                IsActive = pc.IsActive
+            })
+            .ToList();
+    }
 }

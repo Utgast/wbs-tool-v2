@@ -21,4 +21,10 @@ public class CompetenciesController : ControllerBase
         var competencies = _competencyService.GetAll();
         return Ok(competencies);
     }
+        [HttpGet("{competencyId:guid}/persons")]
+    public ActionResult<IEnumerable<CompetencyPersonDto>> GetPersonsByCompetency(Guid competencyId)
+    {
+        var persons = _competencyService.GetPersonsByCompetency(competencyId);
+        return Ok(persons);
+    }
 }

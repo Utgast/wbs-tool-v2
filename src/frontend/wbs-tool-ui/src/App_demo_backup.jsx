@@ -116,11 +116,10 @@ export default function App() {
         )}
 
         {currentTab === 'skills' && (
-          <PagePlaceholder
-            title="Kompetenzen"
-            text="Dieses Modul ist aktuell nicht Bestandteil der Sprint-2-Anpassung."
-          />
-        )}
+  <main className="workspace-dashboard">
+    <CompetenciesPage />
+  </main>
+)}
 
         {currentTab === 'processes' && (
           <PagePlaceholder
