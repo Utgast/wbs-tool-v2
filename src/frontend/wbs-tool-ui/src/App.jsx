@@ -10,31 +10,33 @@ import AdministrationPage from './pages/AdministrationPage'
 import CompetenciesPage from './pages/CompetenciesPage'
 import DashboardPage from './pages/DashboardPage'
 
+import ProcessesPage from './pages/ProcessesPage'
+
 import {
-  createWbsNode,
-  deactivateWbsNode,
-  getProjectDashboard,
-  getProjects,
-  getWbsTree,
-  updateWbsNode,
+    createWbsNode,
+    deactivateWbsNode,
+    getProjectDashboard,
+    getProjects,
+    getWbsTree,
+    updateWbsNode,
 } from './services/api'
 
 import { getPersons } from './services/personsApi'
 import { getRateCategories } from './services/rateCategoriesApi'
 import {
-  createResourceAssignment,
-  getResourceAssignments,
+    createResourceAssignment,
+    getResourceAssignments,
 } from './services/resourceAssignmentsApi'
 import { getTaskStatuses } from './services/taskStatusesApi'
 
 import {
-  buildCreatePayload,
-  canCreateUnder,
-  findNodeInTree,
-  flattenTree,
-  getCreateValidationMessage,
-  isNodeMeaningfullyEmpty,
-  WBS_NODE_TYPES,
+    buildCreatePayload,
+    canCreateUnder,
+    findNodeInTree,
+    flattenTree,
+    getCreateValidationMessage,
+    isNodeMeaningfullyEmpty,
+    WBS_NODE_TYPES,
 } from './utils/wbsRules'
 
 const LAST_SELECTED_PROJECT_ID_KEY = 'wbs-tool:last-selected-project-id'
@@ -869,11 +871,8 @@ function App() {
 )}
 
         {currentTab === 'processes' && (
-          <main className="workspace-grid">
-            <section className="page-placeholder">
-              <h2>Prozesse</h2>
-              <p>Dieses Modul ist im aktuellen Stand noch nicht erweitert.</p>
-            </section>
+          <main className="workspace-dashboard">
+            <ProcessesPage projectId={selectedProject?.id} />
           </main>
         )}
 

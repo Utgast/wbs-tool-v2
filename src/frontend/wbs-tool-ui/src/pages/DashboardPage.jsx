@@ -1,6 +1,49 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import HandlungsbedarfPanel from '../components/dashboard/HandlungsbedarfPanel';
+import {
+    closeRisk,
+    getProjectDeliverables,
+    getProjectRisks,
+    markDeliverableDelivered,
+    updateDeliverable,
+    updateRisk,
+} from '../services/api';
+
+const RISK_STATUS = {
+  1: 'New',
+  2: 'InAssessment',
+  3: 'MitigationDefined',
+  4: 'InProgress',
+  5: 'Accepted',
+  6: 'Closed',
+};
+
+const RISK_SEVERITY = {
+  1: 'Low',
+  2: 'Medium',
+  3: 'High',
+};
+
+const DELIVERABLE_STATUS = {
+  1: 'Draft',
+  2: 'InProgress',
+  3: 'Review',
+  4: 'Approved',
+  5: 'Delivered',
+};
+
+const DELIVERABLE_TYPE = {
+  1: 'Planning',
+  2: 'Calculation',
+  3: 'Drawing',
+  4: 'ApprovalDocument',
+  5: 'EnvironmentalDocument',
+  6: 'Release',
+  7: 'Acceptance',
+  8: 'Report',
+  9: 'Documentation',
+};
 
 export default function DashboardPage({
   dashboard,
@@ -8,6 +51,53 @@ export default function DashboardPage({
   onOpenWbsNode,
 }) {
   const [activeTile, setActiveTile] = useState('overview');
+  const [riskItems, setRiskItems] = useState([]);
+  const [deliverableItems, setDeliverableItems] = useState([]);
+  const [loadingRiskItems, setLoadingRiskItems] = useState(false);
+  const [loadingDeliverableItems, setLoadingDeliverableItems] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [actionBusyId, setActionBusyId] = useState('');
+
+  useEffect(() => {
+    setRiskItems([]);
+    setDeliverableItems([]);
+    setActionError('');
+    setActionBusyId('');
+  }, [dashboard?.projectId]);
+
+  useEffect(() => {
+    if (!dashboard?.projectId) {
+      return;
+    }
+
+    if (
+      (activeTile === 'open-risks' || activeTile === 'critical-risks') &&
+      riskItems.length === 0 &&
+      !loadingRiskItems
+    ) {
+      void loadRiskItems(dashboard.projectId, setRiskItems, setLoadingRiskItems, setActionError);
+    }
+
+    if (
+      (activeTile === 'open-deliverables' || activeTile === 'overdue-deliverables') &&
+      deliverableItems.length === 0 &&
+      !loadingDeliverableItems
+    ) {
+      void loadDeliverableItems(
+        dashboard.projectId,
+        setDeliverableItems,
+        setLoadingDeliverableItems,
+        setActionError
+      );
+    }
+  }, [
+    activeTile,
+    dashboard?.projectId,
+    riskItems.length,
+    deliverableItems.length,
+    loadingRiskItems,
+    loadingDeliverableItems,
+  ]);
 
   if (!dashboard) {
     return (
@@ -23,12 +113,46 @@ export default function DashboardPage({
   const totalActualHours = dashboard.totalActualHours ?? 0;
   const blockedNodes = dashboard.blockedNodes ?? 0;
   const overdueNodes = dashboard.overdueNodes ?? 0;
+  const openRisks = dashboard.openRisks ?? 0;
+  const criticalRisks = dashboard.criticalRisks ?? 0;
+  const openDeliverables = dashboard.openDeliverables ?? 0;
+  const overdueDeliverables = dashboard.overdueDeliverables ?? 0;
+  const deliveryStatus = dashboard.deliveryStatus ?? 'Green';
+  const deliveryStatusReason =
+    dashboard.deliveryStatusReason ?? 'Keine offenen Risiken oder Deliverables';
+  const deliveryStatusTrigger =
+    dashboard.deliveryStatusTrigger ?? 'Kein Ausloeser';
+  const openRiskItems = Array.isArray(dashboard.openRiskItems)
+    ? dashboard.openRiskItems
+    : [];
+  const criticalRiskItems = Array.isArray(dashboard.criticalRiskItems)
+    ? dashboard.criticalRiskItems
+    : [];
+  const openDeliverableItems = Array.isArray(dashboard.openDeliverableItems)
+    ? dashboard.openDeliverableItems
+    : [];
+  const overdueDeliverableItems = Array.isArray(dashboard.overdueDeliverableItems)
+    ? dashboard.overdueDeliverableItems
+    : [];
 
   const plannedDemandHours = dashboard.plannedDemandHours ?? 0;
   const assignedHours = dashboard.assignedHours ?? 0;
+  const coveredHours = dashboard.coveredHours ?? assignedHours;
   const rawOpenHours = dashboard.openHours ?? 0;
   const capacityHours = dashboard.capacityHours ?? 0;
   const utilizationPercent = dashboard.utilizationPercent ?? 0;
+  const missingCompetencies = dashboard.missingCompetencies ?? 0;
+  const competencyCoveragePercent = dashboard.competencyCoveragePercent ?? 0;
+  const topRiskItems = Array.isArray(dashboard.topRiskItems)
+    ? dashboard.topRiskItems
+    : [];
+  const criticalDeliverableItems = Array.isArray(dashboard.criticalDeliverableItems)
+    ? dashboard.criticalDeliverableItems
+    : [];
+
+  const topManagementAttentionItems = Array.isArray(dashboard.topManagementAttentionItems)
+    ? dashboard.topManagementAttentionItems
+    : [];
 
   const openDisplay =
     rawOpenHours < 0
@@ -51,6 +175,149 @@ export default function DashboardPage({
 
   const overdueStatus = overdueNodes > 0 ? 'danger' : 'success';
   const blockedStatus = blockedNodes > 0 ? 'warning' : 'success';
+  const openRisksStatus = openRisks > 0 ? 'warning' : 'success';
+  const criticalRisksStatus = criticalRisks > 0 ? 'danger' : 'success';
+  const openDeliverablesStatus = openDeliverables > 0 ? 'warning' : 'success';
+  const overdueDeliverablesStatus =
+    overdueDeliverables > 0 ? 'danger' : 'success';
+  const deliveryStatusUi =
+    deliveryStatus === 'Red'
+      ? 'danger'
+      : deliveryStatus === 'Yellow'
+      ? 'warning'
+      : 'success';
+
+  const competencyGapStatus =
+    competencyCoveragePercent < 50
+      ? 'danger'
+      : competencyCoveragePercent < 80
+      ? 'warning'
+      : 'success';
+
+  const hasMissingHours = rawOpenHours > 0;
+  const hasOverload = utilizationPercent > 100;
+
+  const openRiskItemsFiltered = riskItems.filter(
+    (item) => Number(item.status) !== 5 && Number(item.status) !== 6
+  );
+  const criticalRiskItemsFiltered = riskItems.filter(
+    (item) =>
+      Number(item.severity) === 3 &&
+      Number(item.status) !== 5 &&
+      Number(item.status) !== 6
+  );
+  const openDeliverableItemsFiltered = deliverableItems.filter(
+    (item) => Number(item.status) !== 5
+  );
+  const overdueDeliverableItemsFiltered = deliverableItems.filter(
+    (item) => Number(item.status) !== 5 && isDateBeforeToday(item.dueDate)
+  );
+
+  async function handleRiskStatusChange(riskId, nextStatus) {
+    const risk = riskItems.find((item) => item.id === riskId);
+
+    if (!risk || !nextStatus) {
+      return;
+    }
+
+    setActionError('');
+    setActionBusyId(`risk-status-${riskId}`);
+
+    try {
+      await updateRisk(riskId, {
+        title: risk.title,
+        description: risk.description,
+        category: risk.category,
+        severity: risk.severity,
+        status: Number(nextStatus),
+        ownerPersonId: risk.ownerPersonId,
+        dueDate: risk.dueDate,
+        wbsNodeId: risk.wbsNodeId,
+      });
+
+      await loadRiskItems(dashboard.projectId, setRiskItems, setLoadingRiskItems, setActionError);
+    } catch (error) {
+      setActionError(error?.message || 'Risiko-Status konnte nicht geaendert werden.');
+    } finally {
+      setActionBusyId('');
+    }
+  }
+
+  async function handleRiskClose(riskId) {
+    if (!riskId) {
+      return;
+    }
+
+    setActionError('');
+    setActionBusyId(`risk-close-${riskId}`);
+
+    try {
+      await closeRisk(riskId);
+      await loadRiskItems(dashboard.projectId, setRiskItems, setLoadingRiskItems, setActionError);
+    } catch (error) {
+      setActionError(error?.message || 'Risiko konnte nicht geschlossen werden.');
+    } finally {
+      setActionBusyId('');
+    }
+  }
+
+  async function handleDeliverableStatusChange(deliverableId, nextStatus) {
+    const deliverable = deliverableItems.find((item) => item.id === deliverableId);
+
+    if (!deliverable || !nextStatus) {
+      return;
+    }
+
+    setActionError('');
+    setActionBusyId(`deliverable-status-${deliverableId}`);
+
+    try {
+      await updateDeliverable(deliverableId, {
+        name: deliverable.name,
+        description: deliverable.description,
+        type: deliverable.type,
+        status: Number(nextStatus),
+        ownerPersonId: deliverable.ownerPersonId,
+        dueDate: deliverable.dueDate,
+        processPhaseId: deliverable.processPhaseId,
+        wbsNodeId: deliverable.wbsNodeId,
+      });
+
+      await loadDeliverableItems(
+        dashboard.projectId,
+        setDeliverableItems,
+        setLoadingDeliverableItems,
+        setActionError
+      );
+    } catch (error) {
+      setActionError(error?.message || 'Deliverable-Status konnte nicht geaendert werden.');
+    } finally {
+      setActionBusyId('');
+    }
+  }
+
+  async function handleDeliverableMarkDelivered(deliverableId) {
+    if (!deliverableId) {
+      return;
+    }
+
+    setActionError('');
+    setActionBusyId(`deliverable-deliver-${deliverableId}`);
+
+    try {
+      await markDeliverableDelivered(deliverableId);
+      await loadDeliverableItems(
+        dashboard.projectId,
+        setDeliverableItems,
+        setLoadingDeliverableItems,
+        setActionError
+      );
+    } catch (error) {
+      setActionError(error?.message || 'Deliverable konnte nicht als Delivered markiert werden.');
+    } finally {
+      setActionBusyId('');
+    }
+  }
 
   return (
     <section
@@ -77,6 +344,82 @@ export default function DashboardPage({
         utilizationPercent={utilizationPercent}
         missingCompetencies={dashboard?.missingCompetencies ?? 0}
     />
+
+      <DashboardSection title="TOP HANDELN">
+        {topManagementAttentionItems.length === 0 ? (
+          <p style={{ color: '#6b7280', fontSize: '14px', gridColumn: '1 / -1' }}>
+            Kein Handlungsbedarf berechnet.
+          </p>
+        ) : (
+          topManagementAttentionItems.map((item, idx) => (
+            <AttentionItemCard key={idx} item={item} />
+          ))
+        )}
+      </DashboardSection>
+
+      <DashboardSection title="Handlungsbedarf">
+        <CockpitCard
+          title="Kompetenz-Gaps"
+          status={competencyGapStatus}
+          subtitle="Deckung und fehlende Kompetenzen"
+        >
+          <CockpitFact
+            label="MissingCompetencies"
+            value={formatNumber(missingCompetencies)}
+          />
+          <CockpitFact
+            label="CompetencyCoveragePercent"
+            value={`${formatNumber(competencyCoveragePercent)}%`}
+          />
+        </CockpitCard>
+
+        <CockpitCard
+          title="Kapazitaets-Gaps"
+          status={hasMissingHours || hasOverload ? 'warning' : 'success'}
+          subtitle="Fehlende Stunden und Auslastung"
+        >
+          <CockpitFact label="OpenHours" value={`${formatNumber(rawOpenHours)} h`} />
+          <CockpitFact label="CoveredHours" value={`${formatNumber(coveredHours)} h`} />
+          <CockpitFact
+            label="UtilizationPercent"
+            value={`${formatNumber(utilizationPercent)}%`}
+          />
+          {hasMissingHours ? <DetailHint>Fehlende Stunden erkannt.</DetailHint> : null}
+          {hasOverload ? <DetailHint>Ueberlastung erkannt (Auslastung ueber 100%).</DetailHint> : null}
+        </CockpitCard>
+
+        <CockpitCard
+          title="Top Risiken"
+          status={topRiskItems.length > 0 ? 'warning' : 'success'}
+          subtitle="Priorisiert nach Severity (High, Medium, Low)"
+        >
+          <CompactList
+            columns={['Title', 'Severity', 'Status']}
+            rows={topRiskItems.map((item) => [
+              item.title ?? '-',
+              item.severity ?? '-',
+              item.status ?? '-',
+            ])}
+            emptyText="Keine offenen Risiken vorhanden."
+          />
+        </CockpitCard>
+
+        <CockpitCard
+          title="Kritische Deliverables"
+          status={criticalDeliverableItems.length > 0 ? 'warning' : 'success'}
+          subtitle="Priorisiert nach Ueberfaelligkeit, Review, Offen"
+        >
+          <CompactList
+            columns={['Name', 'Status', 'DueDate']}
+            rows={criticalDeliverableItems.map((item) => [
+              item.name ?? '-',
+              item.status ?? '-',
+              formatDate(item.dueDate),
+            ])}
+            emptyText="Keine kritischen Deliverables vorhanden."
+          />
+        </CockpitCard>
+      </DashboardSection>
 
 
       <DashboardSection title="Details Handlungsbedarf">
@@ -123,6 +466,50 @@ export default function DashboardPage({
           activeTile={activeTile}
           onClick={setActiveTile}
         />
+
+        <InteractiveKpiTile
+          id="open-risks"
+          title="Offene Risiken"
+          value={formatNumber(openRisks)}
+          unit="Risiken"
+          status={openRisksStatus}
+          description="Noch nicht akzeptierte oder geschlossene Risiken"
+          activeTile={activeTile}
+          onClick={setActiveTile}
+        />
+
+        <InteractiveKpiTile
+          id="critical-risks"
+          title="Kritische Risiken"
+          value={formatNumber(criticalRisks)}
+          unit="Risiken"
+          status={criticalRisksStatus}
+          description="Offene Risiken mit hoher Kritikalitaet"
+          activeTile={activeTile}
+          onClick={setActiveTile}
+        />
+
+        <InteractiveKpiTile
+          id="open-deliverables"
+          title="Offene Deliverables"
+          value={formatNumber(openDeliverables)}
+          unit="Deliverables"
+          status={openDeliverablesStatus}
+          description="Deliverables ohne Status Delivered"
+          activeTile={activeTile}
+          onClick={setActiveTile}
+        />
+
+        <InteractiveKpiTile
+          id="overdue-deliverables"
+          title="Ueberfaellige Deliverables"
+          value={formatNumber(overdueDeliverables)}
+          unit="Deliverables"
+          status={overdueDeliverablesStatus}
+          description="Faellige Deliverables mit Termin in der Vergangenheit"
+          activeTile={activeTile}
+          onClick={setActiveTile}
+        />
       </DashboardSection>
 
       <DashboardSection title="Projektstatus">
@@ -133,6 +520,17 @@ export default function DashboardPage({
           unit=""
           status="info"
           description="Aktueller Projektfortschritt"
+          activeTile={activeTile}
+          onClick={setActiveTile}
+        />
+
+        <InteractiveKpiTile
+          id="delivery-status"
+          title="Lieferfaehigkeit"
+          value={deliveryStatus}
+          unit=""
+          status={deliveryStatusUi}
+          description={`${deliveryStatusReason} | Ausloeser: ${deliveryStatusTrigger}`}
           activeTile={activeTile}
           onClick={setActiveTile}
         />
@@ -266,11 +664,38 @@ export default function DashboardPage({
           totalActualHours,
           blockedNodes,
           overdueNodes,
+          openRisks,
+          criticalRisks,
+          openDeliverables,
+          overdueDeliverables,
+          deliveryStatus,
+          deliveryStatusReason,
+          deliveryStatusTrigger,
+          openRiskItems,
+          criticalRiskItems,
+          openDeliverableItems,
+          overdueDeliverableItems,
           plannedDemandHours,
           assignedHours,
           rawOpenHours,
           capacityHours,
           utilizationPercent,
+        }}
+        drilldown={{
+          openRiskItems: openRiskItemsFiltered,
+          criticalRiskItems: criticalRiskItemsFiltered,
+          openDeliverableItems: openDeliverableItemsFiltered,
+          overdueDeliverableItems: overdueDeliverableItemsFiltered,
+          loadingRiskItems,
+          loadingDeliverableItems,
+          actionBusyId,
+          actionError,
+        }}
+        actions={{
+          onRiskStatusChange: handleRiskStatusChange,
+          onRiskClose: handleRiskClose,
+          onDeliverableStatusChange: handleDeliverableStatusChange,
+          onDeliverableMarkDelivered: handleDeliverableMarkDelivered,
         }}
       />
     </section>
@@ -408,7 +833,7 @@ function InteractiveKpiTile({
   );
 }
 
-function DashboardDetailPanel({ activeTile, dashboard }) {
+function DashboardDetailPanel({ activeTile, dashboard, drilldown, actions }) {
   if (activeTile === 'overview') {
     return (
       <DetailPanel
@@ -559,6 +984,132 @@ function DashboardDetailPanel({ activeTile, dashboard }) {
           Werte über 100% sollten fachlich als Überlastung dargestellt werden,
           nicht nur als Prozentzahl.
         </DetailHint>
+      </DetailPanel>
+    );
+  }
+
+  if (activeTile === 'open-risks') {
+    return (
+      <DetailPanel
+        title="Offene Risiken"
+        status={dashboard.openRisks > 0 ? 'warning' : 'success'}
+        text={
+          dashboard.openRisks > 0
+            ? `Aktuell sind ${formatNumber(
+                dashboard.openRisks
+              )} offene Risiken im Projekt vorhanden.`
+            : 'Aktuell sind keine offenen Risiken im Projekt vorhanden.'
+        }
+      >
+        <DetailRiskTable
+          items={drilldown.openRiskItems}
+          loading={drilldown.loadingRiskItems}
+          busyId={drilldown.actionBusyId}
+          onStatusChange={actions.onRiskStatusChange}
+          onClose={actions.onRiskClose}
+          emptyText="Keine offenen Risiken vorhanden."
+        />
+        {drilldown.actionError ? <DetailHint>{drilldown.actionError}</DetailHint> : null}
+      </DetailPanel>
+    );
+  }
+
+  if (activeTile === 'critical-risks') {
+    return (
+      <DetailPanel
+        title="Kritische Risiken"
+        status={dashboard.criticalRisks > 0 ? 'danger' : 'success'}
+        text={
+          dashboard.criticalRisks > 0
+            ? `Aktuell sind ${formatNumber(
+                dashboard.criticalRisks
+              )} kritische offene Risiken im Projekt vorhanden.`
+            : 'Aktuell sind keine kritischen offenen Risiken im Projekt vorhanden.'
+        }
+      >
+        <DetailRiskTable
+          items={drilldown.criticalRiskItems}
+          loading={drilldown.loadingRiskItems}
+          busyId={drilldown.actionBusyId}
+          onStatusChange={actions.onRiskStatusChange}
+          onClose={actions.onRiskClose}
+          emptyText="Keine kritischen offenen Risiken vorhanden."
+        />
+        {drilldown.actionError ? <DetailHint>{drilldown.actionError}</DetailHint> : null}
+      </DetailPanel>
+    );
+  }
+
+  if (activeTile === 'open-deliverables') {
+    return (
+      <DetailPanel
+        title="Offene Deliverables"
+        status={dashboard.openDeliverables > 0 ? 'warning' : 'success'}
+        text={
+          dashboard.openDeliverables > 0
+            ? `Aktuell sind ${formatNumber(
+                dashboard.openDeliverables
+              )} offene Deliverables im Projekt vorhanden.`
+            : 'Aktuell sind keine offenen Deliverables im Projekt vorhanden.'
+        }
+      >
+        <DetailDeliverableTable
+          items={drilldown.openDeliverableItems}
+          loading={drilldown.loadingDeliverableItems}
+          busyId={drilldown.actionBusyId}
+          onStatusChange={actions.onDeliverableStatusChange}
+          onDeliver={actions.onDeliverableMarkDelivered}
+          emptyText="Keine offenen Deliverables vorhanden."
+        />
+        {drilldown.actionError ? <DetailHint>{drilldown.actionError}</DetailHint> : null}
+      </DetailPanel>
+    );
+  }
+
+  if (activeTile === 'overdue-deliverables') {
+    return (
+      <DetailPanel
+        title="Ueberfaellige Deliverables"
+        status={dashboard.overdueDeliverables > 0 ? 'danger' : 'success'}
+        text={
+          dashboard.overdueDeliverables > 0
+            ? `Aktuell sind ${formatNumber(
+                dashboard.overdueDeliverables
+              )} ueberfaellige Deliverables im Projekt vorhanden.`
+            : 'Aktuell sind keine ueberfaelligen Deliverables im Projekt vorhanden.'
+        }
+      >
+        <DetailDeliverableTable
+          items={drilldown.overdueDeliverableItems}
+          loading={drilldown.loadingDeliverableItems}
+          busyId={drilldown.actionBusyId}
+          onStatusChange={actions.onDeliverableStatusChange}
+          onDeliver={actions.onDeliverableMarkDelivered}
+          emptyText="Keine ueberfaelligen Deliverables vorhanden."
+        />
+        {drilldown.actionError ? <DetailHint>{drilldown.actionError}</DetailHint> : null}
+      </DetailPanel>
+    );
+  }
+
+  if (activeTile === 'delivery-status') {
+    const status =
+      dashboard.deliveryStatus === 'Red'
+        ? 'danger'
+        : dashboard.deliveryStatus === 'Yellow'
+        ? 'warning'
+        : 'success';
+
+    return (
+      <DetailPanel
+        title="Lieferfaehigkeitsstatus"
+        status={status}
+        text={`Status: ${dashboard.deliveryStatus}. ${dashboard.deliveryStatusReason}`}
+      >
+        <DetailFact
+          label="Wesentlicher Ausloeser"
+          value={dashboard.deliveryStatusTrigger}
+        />
       </DetailPanel>
     );
   }
@@ -784,6 +1335,299 @@ function DetailHint({ children }) {
   );
 }
 
+function CockpitCard({ title, status, subtitle, children }) {
+  const config = getStatusConfig(status);
+
+  return (
+    <section
+      style={{
+        backgroundColor: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderTop: `5px solid ${config.accentColor}`,
+        borderRadius: '14px',
+        padding: '16px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+        <div>
+          <h4 style={{ margin: 0, color: '#111827' }}>{title}</h4>
+          <div style={{ marginTop: '4px', color: '#6b7280', fontSize: '13px' }}>{subtitle}</div>
+        </div>
+        <div style={{ fontSize: '20px' }}>{config.icon}</div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function CockpitFact({ label, value }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: '10px',
+        border: '1px solid #e5e7eb',
+        borderRadius: '10px',
+        padding: '10px 12px',
+        backgroundColor: '#f9fafb',
+      }}
+    >
+      <span style={{ color: '#6b7280', fontSize: '13px' }}>{label}</span>
+      <strong style={{ color: '#111827' }}>{value}</strong>
+    </div>
+  );
+}
+
+function CompactList({ columns, rows, emptyText }) {
+  if (!rows || rows.length === 0) {
+    return <DetailHint>{emptyText}</DetailHint>;
+  }
+
+  return (
+    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f9fafb' }}>
+            {columns.map((column) => (
+              <th
+                key={column}
+                style={{
+                  textAlign: 'left',
+                  padding: '8px 10px',
+                  color: '#374151',
+                  borderBottom: '1px solid #e5e7eb',
+                }}
+              >
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={`compact-row-${rowIndex}`}>
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={`compact-row-${rowIndex}-cell-${cellIndex}`}
+                  style={{
+                    padding: '8px 10px',
+                    color: '#111827',
+                    borderBottom:
+                      rowIndex === rows.length - 1 ? 'none' : '1px solid #f3f4f6',
+                  }}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DetailRiskTable({ items, loading, busyId, onStatusChange, onClose, emptyText }) {
+  if (loading) {
+    return <DetailHint>Risiken werden geladen...</DetailHint>;
+  }
+
+  if (!items || items.length === 0) {
+    return <DetailHint>{emptyText}</DetailHint>;
+  }
+
+  return (
+    <div
+      style={{
+        overflowX: 'auto',
+        border: '1px solid #e5e7eb',
+        borderRadius: '12px',
+      }}
+    >
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '14px',
+        }}
+      >
+        <thead>
+          <tr style={{ backgroundColor: '#f9fafb' }}>
+            {['Title', 'Severity', 'Status', 'OwnerPersonId', 'Aktionen'].map((column) => (
+              <th
+                key={column}
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  color: '#374151',
+                  borderBottom: '1px solid #e5e7eb',
+                }}
+              >
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, rowIndex) => (
+            <tr key={item.id ?? `risk-row-${rowIndex}`}>
+              <td style={tableCellStyle(rowIndex, items.length)}>{item.title ?? '-'}</td>
+              <td style={tableCellStyle(rowIndex, items.length)}>
+                {RISK_SEVERITY[Number(item.severity)] ?? item.severity ?? '-'}
+              </td>
+              <td style={tableCellStyle(rowIndex, items.length)}>
+                {RISK_STATUS[Number(item.status)] ?? item.status ?? '-'}
+              </td>
+              <td style={tableCellStyle(rowIndex, items.length)}>{item.ownerPersonId ?? '-'}</td>
+              <td style={tableCellStyle(rowIndex, items.length)}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={String(item.status ?? '')}
+                    onChange={(event) => onStatusChange(item.id, event.target.value)}
+                    disabled={busyId === `risk-status-${item.id}`}
+                    style={actionSelectStyle}
+                  >
+                    {Object.entries(RISK_STATUS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => onClose(item.id)}
+                    disabled={busyId === `risk-close-${item.id}` || Number(item.status) === 6}
+                    style={actionButtonStyle}
+                  >
+                    {busyId === `risk-close-${item.id}` ? '...' : 'Close'}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DetailDeliverableTable({ items, loading, busyId, onStatusChange, onDeliver, emptyText }) {
+  if (loading) {
+    return <DetailHint>Deliverables werden geladen...</DetailHint>;
+  }
+
+  if (!items || items.length === 0) {
+    return <DetailHint>{emptyText}</DetailHint>;
+  }
+
+  return (
+    <div
+      style={{
+        overflowX: 'auto',
+        border: '1px solid #e5e7eb',
+        borderRadius: '12px',
+      }}
+    >
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '14px',
+        }}
+      >
+        <thead>
+          <tr style={{ backgroundColor: '#f9fafb' }}>
+            {['Name', 'Type', 'Status', 'DueDate', 'Aktionen'].map((column) => (
+              <th
+                key={column}
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  color: '#374151',
+                  borderBottom: '1px solid #e5e7eb',
+                }}
+              >
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, rowIndex) => (
+            <tr key={item.id ?? `deliverable-row-${rowIndex}`}>
+              <td style={tableCellStyle(rowIndex, items.length)}>{item.name ?? '-'}</td>
+              <td style={tableCellStyle(rowIndex, items.length)}>
+                {DELIVERABLE_TYPE[Number(item.type)] ?? item.type ?? '-'}
+              </td>
+              <td style={tableCellStyle(rowIndex, items.length)}>
+                {DELIVERABLE_STATUS[Number(item.status)] ?? item.status ?? '-'}
+              </td>
+              <td style={tableCellStyle(rowIndex, items.length)}>{formatDate(item.dueDate)}</td>
+              <td style={tableCellStyle(rowIndex, items.length)}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={String(item.status ?? '')}
+                    onChange={(event) => onStatusChange(item.id, event.target.value)}
+                    disabled={busyId === `deliverable-status-${item.id}`}
+                    style={actionSelectStyle}
+                  >
+                    {Object.entries(DELIVERABLE_STATUS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => onDeliver(item.id)}
+                    disabled={
+                      busyId === `deliverable-deliver-${item.id}` || Number(item.status) === 5
+                    }
+                    style={actionButtonStyle}
+                  >
+                    {busyId === `deliverable-deliver-${item.id}` ? '...' : 'Deliver'}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function tableCellStyle(rowIndex, totalRows) {
+  return {
+    padding: '10px 12px',
+    borderBottom: rowIndex === totalRows - 1 ? 'none' : '1px solid #f3f4f6',
+    color: '#111827',
+    verticalAlign: 'top',
+  };
+}
+
+const actionSelectStyle = {
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  padding: '6px 8px',
+  backgroundColor: '#ffffff',
+};
+
+const actionButtonStyle = {
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  padding: '6px 10px',
+  backgroundColor: '#f9fafb',
+  cursor: 'pointer',
+};
+
 function getStatusConfig(status) {
   const configs = {
     danger: {
@@ -847,4 +1691,195 @@ function formatNumber(value) {
   return new Intl.NumberFormat('de-DE', {
     maximumFractionDigits: 2,
   }).format(Number(value));
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '-';
+  }
+
+  const raw = String(value);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [year, month, day] = raw.split('-');
+    return `${day}.${month}.${year}`;
+  }
+
+  const parsed = new Date(raw);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+
+  return new Intl.DateTimeFormat('de-DE').format(parsed);
+}
+
+function isDateBeforeToday(value) {
+  if (!value) {
+    return false;
+  }
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate()
+  ).padStart(2, '0')}`;
+  const dateKey = String(value).slice(0, 10);
+
+  return dateKey < todayKey;
+}
+
+async function loadRiskItems(projectId, setRiskItems, setLoadingRiskItems, setActionError) {
+  if (!projectId) {
+    setRiskItems([]);
+    return;
+  }
+
+  setLoadingRiskItems(true);
+
+  try {
+    const data = await getProjectRisks(projectId);
+    const normalized = Array.isArray(data)
+      ? data.map((item) => ({
+          ...item,
+          status: parseEnumValue(item.status, RISK_STATUS),
+          severity: parseEnumValue(item.severity, RISK_SEVERITY),
+        }))
+      : [];
+
+    setRiskItems(normalized);
+  } catch (error) {
+    setActionError(error?.message || 'Risiken konnten nicht geladen werden.');
+  } finally {
+    setLoadingRiskItems(false);
+  }
+}
+
+async function loadDeliverableItems(
+  projectId,
+  setDeliverableItems,
+  setLoadingDeliverableItems,
+  setActionError
+) {
+  if (!projectId) {
+    setDeliverableItems([]);
+    return;
+  }
+
+  setLoadingDeliverableItems(true);
+
+  try {
+    const data = await getProjectDeliverables(projectId);
+    const normalized = Array.isArray(data)
+      ? data.map((item) => ({
+          ...item,
+          status: parseEnumValue(item.status, DELIVERABLE_STATUS),
+          type: parseEnumValue(item.type, DELIVERABLE_TYPE),
+        }))
+      : [];
+
+    setDeliverableItems(normalized);
+  } catch (error) {
+    setActionError(error?.message || 'Deliverables konnten nicht geladen werden.');
+  } finally {
+    setLoadingDeliverableItems(false);
+  }
+}
+
+function parseEnumValue(value, map) {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  const entry = Object.entries(map).find(([, label]) => label === value);
+
+  return entry ? Number(entry[0]) : value;
+}
+
+function attentionItemColor(priorityScore) {
+  if (priorityScore >= 90) {
+    return { border: '#ef4444', background: '#fef2f2', badge: '#ef4444', badgeText: '#fff' };
+  }
+  if (priorityScore >= 70) {
+    return { border: '#f59e0b', background: '#fffbeb', badge: '#f59e0b', badgeText: '#fff' };
+  }
+  return { border: '#22c55e', background: '#f0fdf4', badge: '#22c55e', badgeText: '#fff' };
+}
+
+function AttentionItemCard({ item }) {
+  const score = item.priorityScore ?? 0;
+  const colors = attentionItemColor(score);
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${colors.border}`,
+        borderLeft: `6px solid ${colors.border}`,
+        borderRadius: '12px',
+        padding: '16px',
+        backgroundColor: colors.background,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        minWidth: '0',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            color: '#6b7280',
+            letterSpacing: '0.5px',
+          }}
+        >
+          {item.type ?? '-'}
+        </span>
+        <span
+          style={{
+            backgroundColor: colors.badge,
+            color: colors.badgeText,
+            fontSize: '12px',
+            fontWeight: '700',
+            borderRadius: '6px',
+            padding: '2px 8px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {score}
+        </span>
+      </div>
+
+      <div style={{ fontWeight: '700', fontSize: '15px', color: '#111827', lineHeight: '1.3' }}>
+        {item.title ?? '-'}
+      </div>
+
+      <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.45' }}>
+        {item.explanation ?? '-'}
+      </div>
+
+      <div
+        style={{
+          fontSize: '13px',
+          color: '#1d4ed8',
+          fontWeight: '600',
+        }}
+      >
+        &#8594; {item.suggestedAction ?? '-'}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '4px' }}>
+        {item.reactionDate ? (
+          <span style={{ fontSize: '12px', color: '#6b7280' }}>
+            Reaktion bis: <strong>{formatDate(item.reactionDate)}</strong>
+          </span>
+        ) : null}
+        {item.suggestedOwnerPersonId ? (
+          <span style={{ fontSize: '12px', color: '#6b7280' }}>
+            Vorgeschl. Owner: <strong>{item.suggestedOwnerPersonId}</strong>
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
 }

@@ -21,13 +21,18 @@ public class CompetencyService : ICompetencyService
             .Where(c => c.IsActive)
             .OrderBy(c => c.Code)
             .Select(c => new CompetencyDto
-            {
+{
                 Id = c.Id,
                 Code = c.Code,
                 Name = c.Name,
                 Description = c.Description,
-                IsActive = c.IsActive
-            })
+                IsActive = c.IsActive,
+
+    AssignedPersonsCount =
+        _dbContext.PersonCompetencies.Count(pc =>
+            pc.CompetencyId == c.Id &&
+            pc.IsActive)
+})
             .ToList();
     }
 

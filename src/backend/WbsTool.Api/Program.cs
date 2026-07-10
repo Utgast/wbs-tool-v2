@@ -2,10 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Data;
 using WbsTool.Api.Modules.Capacity.Services;
 using WbsTool.Api.Modules.Competencies.Services;
+using WbsTool.Api.Modules.Deliverables.Services;
 using WbsTool.Api.Modules.Persons.Services;
 using WbsTool.Api.Modules.ProcessPhases.Services;
 using WbsTool.Api.Modules.Projects.Services;
 using WbsTool.Api.Modules.RateCategories.Services;
+using WbsTool.Api.Modules.Risks.Services;
 using WbsTool.Api.Modules.ResourceDemands.Services;
 using WbsTool.Api.Modules.Seed.Services;
 using WbsTool.Api.Modules.TaskStatuses.Services;
@@ -35,6 +37,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IManagementAttentionService, ManagementAttentionService>();
 builder.Services.AddScoped<IProjectDashboardService, ProjectDashboardService>();
 
 builder.Services.AddScoped<IWbsService, WbsService>();
@@ -46,6 +49,8 @@ builder.Services.AddScoped<ITaskStatusService, TaskStatusService>();
 
 builder.Services.AddScoped<IResourceDemandService, ResourceDemandService>();
 builder.Services.AddScoped<ICapacityAllocationService, CapacityAllocationService>();
+builder.Services.AddScoped<IRiskService, RiskService>();
+builder.Services.AddScoped<IDeliverableService, DeliverableService>();
 
 builder.Services.AddScoped<ICompetencyService, CompetencyService>();
 builder.Services.AddScoped<IProcessPhaseService, ProcessPhaseService>();

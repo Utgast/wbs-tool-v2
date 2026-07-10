@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Modules.Capacity.Models;
 using WbsTool.Api.Modules.Competencies.Models;
+using WbsTool.Api.Modules.Deliverables.Models;
 using WbsTool.Api.Modules.Governance.Models;
 using WbsTool.Api.Modules.ProcessPhases.Models;
 using WbsTool.Api.Modules.Persons.Models;
 using WbsTool.Api.Modules.Projects.Models;
 using WbsTool.Api.Modules.RateCategories.Models;
+using WbsTool.Api.Modules.Risks.Models;
 using WbsTool.Api.Modules.ResourceDemands.Models;
 using WbsTool.Api.Modules.Wbs.Models;
 using WbsTaskStatus = WbsTool.Api.Modules.TaskStatuses.Models.TaskStatus;
@@ -26,7 +28,9 @@ public class AppDbContext : DbContext
     public DbSet<PersonCompetency> PersonCompetencies => Set<PersonCompetency>();
     public DbSet<WbsRequiredCompetency> WbsRequiredCompetencies => Set<WbsRequiredCompetency>();
     public DbSet<CapacityAllocation> CapacityAllocations => Set<CapacityAllocation>();
+    public DbSet<Deliverable> Deliverables => Set<Deliverable>();
     public DbSet<ResourceDemand> ResourceDemands => Set<ResourceDemand>();
+    public DbSet<Risk> Risks => Set<Risk>();
     public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options)
@@ -432,6 +436,84 @@ public class AppDbContext : DbContext
             entity.HasOne(rd => rd.RequiredCompetency)
                 .WithMany()
                 .HasForeignKey(rd => rd.RequiredCompetencyId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Risk>(entity =>
+        {
+            entity.ToTable("Risks");
+
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.Title)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(r => r.Description)
+                .HasMaxLength(4000);
+
+            entity.Property(r => r.Category)
+                .HasConversion<int>();
+
+            entity.Property(r => r.Severity)
+                .HasConversion<int>();
+
+            entity.Property(r => r.Status)
+                .HasConversion<int>();
+
+            entity.HasOne(r => r.Project)
+                .WithMany()
+                .HasForeignKey(r => r.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.OwnerPerson)
+                .WithMany()
+                .HasForeignKey(r => r.OwnerPersonId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.WbsNode)
+                .WithMany()
+                .HasForeignKey(r => r.WbsNodeId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Deliverable>(entity =>
+        {
+            entity.ToTable("Deliverables");
+
+            entity.HasKey(d => d.Id);
+
+            entity.Property(d => d.Name)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(d => d.Description)
+                .HasMaxLength(4000);
+
+            entity.Property(d => d.Type)
+                .HasConversion<int>();
+
+            entity.Property(d => d.Status)
+                .HasConversion<int>();
+
+            entity.HasOne(d => d.Project)
+                .WithMany()
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.OwnerPerson)
+                .WithMany()
+                .HasForeignKey(d => d.OwnerPersonId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.ProcessPhase)
+                .WithMany()
+                .HasForeignKey(d => d.ProcessPhaseId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(d => d.WbsNode)
+                .WithMany()
+                .HasForeignKey(d => d.WbsNodeId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 

@@ -1,16 +1,22 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using WbsTool.Api.Data;
+using WbsTool.Api.Modules.Deliverables.Models;
 using WbsTool.Api.Modules.Projects.Contracts;
+using WbsTool.Api.Modules.Risks.Models;
 
 namespace WbsTool.Api.Modules.Projects.Services;
 
 public class ProjectDashboardService : IProjectDashboardService
 {
     private readonly AppDbContext _dbContext;
+    private readonly IManagementAttentionService _managementAttentionService;
 
-    public ProjectDashboardService(AppDbContext dbContext)
+    public ProjectDashboardService(
+        AppDbContext dbContext,
+        IManagementAttentionService managementAttentionService)
     {
         _dbContext = dbContext;
+        _managementAttentionService = managementAttentionService;
     }
 
     public ProjectDashboardDto? GetDashboard(Guid projectId)
@@ -66,8 +72,199 @@ public class ProjectDashboardService : IProjectDashboardService
             n.Status.Code != "Delivered" &&
             n.Status.Code != "Done");
 
+        var openRisks = _dbContext.Risks
+            .AsNoTracking()
+            .Count(r =>
+                r.ProjectId == projectId &&
+                r.Status != RiskStatus.Accepted &&
+                r.Status != RiskStatus.Closed);
+
+        var criticalRisks = _dbContext.Risks
+            .AsNoTracking()
+            .Count(r =>
+                r.ProjectId == projectId &&
+                r.Severity == RiskSeverity.High &&
+                r.Status != RiskStatus.Accepted &&
+                r.Status != RiskStatus.Closed);
+
+        var openDeliverables = _dbContext.Deliverables
+            .AsNoTracking()
+            .Count(d =>
+                d.ProjectId == projectId &&
+                d.Status != DeliverableStatus.Delivered);
+
+        var overdueDeliverables = _dbContext.Deliverables
+            .AsNoTracking()
+            .Count(d =>
+                d.ProjectId == projectId &&
+                d.DueDate < today &&
+                d.Status != DeliverableStatus.Delivered);
+
+        var openRiskItems = _dbContext.Risks
+            .AsNoTracking()
+            .Where(r =>
+                r.ProjectId == projectId &&
+                r.Status != RiskStatus.Accepted &&
+                r.Status != RiskStatus.Closed)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToList()
+            .Select(r => new ProjectDashboardRiskItemDto
+            {
+                Title = r.Title,
+                Severity = r.Severity.ToString(),
+                Status = r.Status.ToString(),
+                OwnerPersonId = r.OwnerPersonId
+            })
+            .ToList();
+
+        var criticalRiskItems = _dbContext.Risks
+            .AsNoTracking()
+            .Where(r =>
+                r.ProjectId == projectId &&
+                r.Severity == RiskSeverity.High &&
+                r.Status != RiskStatus.Accepted &&
+                r.Status != RiskStatus.Closed)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToList()
+            .Select(r => new ProjectDashboardRiskItemDto
+            {
+                Title = r.Title,
+                Severity = r.Severity.ToString(),
+                Status = r.Status.ToString(),
+                OwnerPersonId = r.OwnerPersonId
+            })
+            .ToList();
+
+        var openDeliverableItems = _dbContext.Deliverables
+            .AsNoTracking()
+            .Where(d =>
+                d.ProjectId == projectId &&
+                d.Status != DeliverableStatus.Delivered)
+            .OrderBy(d => d.DueDate)
+            .ToList()
+            .Select(d => new ProjectDashboardDeliverableItemDto
+            {
+                Name = d.Name,
+                Type = d.Type.ToString(),
+                Status = d.Status.ToString(),
+                DueDate = d.DueDate
+            })
+            .ToList();
+
+        var overdueDeliverableItems = _dbContext.Deliverables
+            .AsNoTracking()
+            .Where(d =>
+                d.ProjectId == projectId &&
+                d.DueDate < today &&
+                d.Status != DeliverableStatus.Delivered)
+            .OrderBy(d => d.DueDate)
+            .ToList()
+            .Select(d => new ProjectDashboardDeliverableItemDto
+            {
+                Name = d.Name,
+                Type = d.Type.ToString(),
+                Status = d.Status.ToString(),
+                DueDate = d.DueDate
+            })
+            .ToList();
+
+        var topRiskItems = _dbContext.Risks
+            .AsNoTracking()
+            .Where(r =>
+                r.ProjectId == projectId &&
+                r.Status != RiskStatus.Accepted &&
+                r.Status != RiskStatus.Closed)
+            .ToList()
+            .OrderBy(r => RiskSeverityRank(r.Severity))
+            .ThenByDescending(r => r.CreatedAt)
+            .Take(5)
+            .Select(r => new ProjectDashboardRiskItemDto
+            {
+                Title = r.Title,
+                Severity = r.Severity.ToString(),
+                Status = r.Status.ToString(),
+                OwnerPersonId = r.OwnerPersonId
+            })
+            .ToList();
+
+        var criticalDeliverableItems = _dbContext.Deliverables
+            .AsNoTracking()
+            .Where(d =>
+                d.ProjectId == projectId &&
+                d.Status != DeliverableStatus.Delivered)
+            .ToList()
+            .OrderBy(d => DeliverablePriorityRank(d, today))
+            .ThenBy(d => d.DueDate)
+            .Take(5)
+            .Select(d => new ProjectDashboardDeliverableItemDto
+            {
+                Name = d.Name,
+                Type = d.Type.ToString(),
+                Status = d.Status.ToString(),
+                DueDate = d.DueDate
+            })
+            .ToList();
+
+        var topManagementAttentionItems = _managementAttentionService
+            .GetAttentionItems(projectId)
+            .Take(10)
+            .ToList();
+
         var resourceOverview = GetResourceOverview(projectId);
         var competencyOverview = GetCompetencyOverview(projectId);
+
+        var competencyCoveragePercent = competencyOverview.CompetencyCoveragePercent;
+        var utilizationPercent = resourceOverview?.UtilizationPercent ?? 0m;
+        var openHours = resourceOverview?.OpenHours ?? 0m;
+        var coveredHours = resourceOverview?.AssignedHours ?? 0m;
+
+        var deliveryStatus = "Green";
+        var deliveryStatusReason = "Keine RED- oder YELLOW-Regel aktiv";
+        var deliveryStatusTrigger = "Kein Ausloeser";
+
+        if (criticalRisks > 0)
+        {
+            deliveryStatus = "Red";
+            deliveryStatusReason = "Kritische Risiken vorhanden";
+            deliveryStatusTrigger = "CriticalRisks";
+        }
+        else if (overdueDeliverables > 0)
+        {
+            deliveryStatus = "Red";
+            deliveryStatusReason = "Ueberfaellige Deliverables vorhanden";
+            deliveryStatusTrigger = "OverdueDeliverables";
+        }
+        else if (competencyCoveragePercent < 50m)
+        {
+            deliveryStatus = "Red";
+            deliveryStatusReason = "Kompetenzdeckung unter 50 Prozent";
+            deliveryStatusTrigger = "CompetencyCoveragePercent < 50";
+        }
+        else if (openRisks > 0)
+        {
+            deliveryStatus = "Yellow";
+            deliveryStatusReason = "Offene Risiken vorhanden";
+            deliveryStatusTrigger = "OpenRisks";
+        }
+        else if (openDeliverables > 0)
+        {
+            deliveryStatus = "Yellow";
+            deliveryStatusReason = "Offene Deliverables vorhanden";
+            deliveryStatusTrigger = "OpenDeliverables";
+        }
+        else if (competencyCoveragePercent < 80m)
+        {
+            deliveryStatus = "Yellow";
+            deliveryStatusReason = "Kompetenzdeckung unter 80 Prozent";
+            deliveryStatusTrigger = "CompetencyCoveragePercent < 80";
+        }
+        else if (utilizationPercent > 100m)
+        {
+            deliveryStatus = "Yellow";
+            deliveryStatusReason = "Auslastung ueber 100 Prozent";
+            deliveryStatusTrigger =
+                $"UtilizationPercent > 100 (OpenHours={openHours}, CoveredHours={coveredHours})";
+        }
 
         return new ProjectDashboardDto
         {
@@ -84,17 +281,33 @@ public class ProjectDashboardService : IProjectDashboardService
             BlockedNodes = blockedNodes,
             OverdueNodes = overdueNodes,
 
+            OpenRisks = openRisks,
+            CriticalRisks = criticalRisks,
+            OpenDeliverables = openDeliverables,
+            OverdueDeliverables = overdueDeliverables,
+            DeliveryStatus = deliveryStatus,
+            DeliveryStatusReason = deliveryStatusReason,
+            DeliveryStatusTrigger = deliveryStatusTrigger,
+            OpenRiskItems = openRiskItems,
+            CriticalRiskItems = criticalRiskItems,
+            OpenDeliverableItems = openDeliverableItems,
+            OverdueDeliverableItems = overdueDeliverableItems,
+
             PlannedDemandHours = resourceOverview?.PlannedDemandHours ?? 0m,
             AssignedHours = resourceOverview?.AssignedHours ?? 0m,
+            CoveredHours = resourceOverview?.AssignedHours ?? 0m,
             OpenHours = resourceOverview?.OpenHours ?? 0m,
 
             CapacityHours = resourceOverview?.CapacityHours ?? 0m,
-            UtilizationPercent = resourceOverview?.UtilizationPercent ?? 0m,
+            UtilizationPercent = utilizationPercent,
 
             RequiredCompetencies = competencyOverview.RequiredCompetencies,
             CoveredCompetencies = competencyOverview.CoveredCompetencies,
             MissingCompetencies = competencyOverview.MissingCompetencies,
-            CompetencyCoveragePercent = competencyOverview.CompetencyCoveragePercent
+            CompetencyCoveragePercent = competencyCoveragePercent,
+            TopRiskItems = topRiskItems,
+            CriticalDeliverableItems = criticalDeliverableItems,
+            TopManagementAttentionItems = topManagementAttentionItems
         };
     }
 
@@ -214,5 +427,30 @@ public class ProjectDashboardService : IProjectDashboardService
         public int CoveredCompetencies { get; set; }
         public int MissingCompetencies { get; set; }
         public decimal CompetencyCoveragePercent { get; set; }
+    }
+
+    private static int RiskSeverityRank(RiskSeverity severity)
+    {
+        return severity switch
+        {
+            RiskSeverity.High => 1,
+            RiskSeverity.Medium => 2,
+            _ => 3
+        };
+    }
+
+    private static int DeliverablePriorityRank(Deliverable deliverable, DateOnly today)
+    {
+        if (deliverable.DueDate < today)
+        {
+            return 1;
+        }
+
+        if (deliverable.Status == DeliverableStatus.Review)
+        {
+            return 2;
+        }
+
+        return 3;
     }
 }
