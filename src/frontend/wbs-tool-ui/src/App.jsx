@@ -41,30 +41,66 @@ import {
 
 const LAST_SELECTED_PROJECT_ID_KEY = 'wbs-tool:last-selected-project-id'
 
+/**
+ * HAUPTKOMPONENTE - App.jsx
+ * 
+ * Verantwortung:
+ * 1. Zustandsverwaltung für globale App-Daten (React Hooks)
+ * 2. API-Aufrufe für WBS, Projekte, Master Data
+ * 3. Layout mit Tab-Navigation (WBS, Dashboard, Administration)
+ * 4. Drag & Drop Kontext (WBS Knoten verschieben)
+ * 
+ * State-Kategorien:
+ * - Project State: selectedProject, projects
+ * - WBS Tree State: wbsTree, selectedNode, draftNode
+ * - Detail Panel State: detailMode, isDirty
+ * - Master Data: persons, rateCategories, taskStatuses
+ * - Resource Assignments: Ressourcen-Zuordnungen pro Node
+ * - UI State: currentTab, error, loading flags
+ * - Drag & Drop: activeDragTemplateType
+ * 
+ * Architektur: Diese Komponente ist ein Container, der API-Calls macht
+ * und State an Child Components weitergibt (Props). Child Components
+ * sollten "dumb components" sein (möglichst zustandslos).
+ */
 function App() {
+  /// ===== PROJECT STATE =====
+  /// Projekte und ausgewähltes Projekt
   const [projects, setProjects] = useState([])
   const [selectedProject, setSelectedProject] = useState(null)
 
+  /// ===== WBS TREE STATE =====
+  /// Dashboard (Metriken), Baumstruktur, ausgewählter Knoten
   const [dashboard, setDashboard] = useState(null)
   const [wbsTree, setWbsTree] = useState([])
 
+  /// ===== DETAIL PANEL STATE =====
+  /// Ausgewählter Knoten, Edit/View-Modus, Entwürfe
   const [selectedNode, setSelectedNode] = useState(null)
   const [detailMode, setDetailMode] = useState('empty')
   const [draftNode, setDraftNode] = useState(null)
 
+  /// ===== EDIT STATE =====
+  /// Unsaved Changes Flag, Saving Status, letzte erstelle Node
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const [lastCreatedNode, setLastCreatedNode] = useState(null)
 
+  /// ===== LOADING/ERROR STATE =====
+  /// Loading Flags für verschiedene Data-Quellen
   const [loadingProjects, setLoadingProjects] = useState(false)
   const [loadingWorkspace, setLoadingWorkspace] = useState(false)
 
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
 
+  /// ===== DRAG & DROP STATE =====
+  /// Aktive Template bei Drag Operation
   const [activeDragTemplateType, setActiveDragTemplateType] = useState(null)
 
+  /// ===== MASTER DATA STATE =====
+  /// Stammdaten: Personen, Tarifkategorien, Task Status
   const [persons, setPersons] = useState([])
   const [rateCategories, setRateCategories] = useState([])
   const [taskStatuses, setTaskStatuses] = useState([])
@@ -72,6 +108,8 @@ function App() {
   const [masterDataLoading, setMasterDataLoading] = useState(false)
   const [masterDataError, setMasterDataError] = useState('')
 
+  /// ===== RESOURCE ASSIGNMENTS STATE =====
+  /// Ressourcen-Zuordnungen für den aktuell ausgewählten WBS Knoten
   const [resourceAssignments, setResourceAssignments] = useState([])
   const [resourceAssignmentsLoading, setResourceAssignmentsLoading] = useState(false)
   const [resourceAssignmentsError, setResourceAssignmentsError] = useState('')
@@ -79,16 +117,24 @@ function App() {
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [assignmentActionError, setAssignmentActionError] = useState('')
 
+  /// ===== TAB NAVIGATION STATE =====
+  /// Aktiver Tab: 'wbs', 'dashboard', 'administration'
   const [currentTab, setCurrentTab] = useState('wbs')
 
+  /// ===== REFS FOR REQUEST TRACKING =====
+  /// Verhindert Race Conditions bei parallelen API-Aufrufen
   const workspaceRequestRef = useRef(0)
   const assignmentsRequestRef = useRef(0)
 
+  /// ===== INITIALIZATION =====
+  /// Beim Mount: Lade Projekte und Master Data (Personen, Tarifkategorien, etc.)
   useEffect(() => {
     loadProjects()
     loadMasterData()
   }, [])
 
+  /// ===== PROJECT WECHSEL =====
+  /// Wenn Projekt gewechselt wird: Lade WBS Tree und Dashboard für dieses Projekt
   useEffect(() => {
     if (!selectedProject?.id) {
       resetWorkspaceState()
@@ -98,6 +144,9 @@ function App() {
     loadWorkspace(selectedProject.id)
   }, [selectedProject])
 
+  /// ===== HELPER-FUNKTIONEN - STATE RESET =====
+
+  /// Setzt Detail Panel auf Initialzustand zurück
   function resetDetailState() {
     setSelectedNode(null)
     setDraftNode(null)
@@ -108,6 +157,7 @@ function App() {
     setAssignmentActionError('')
   }
 
+  /// Setzt gesamten Workspace-State zurück (nach Projekt-Wechsel oder Abmeldung)
   function resetWorkspaceState() {
     setDashboard(null)
     setWbsTree([])
@@ -115,6 +165,10 @@ function App() {
     resetDetailState()
   }
 
+  /// ===== HELPER-FUNKTIONEN - LOCAL STORAGE =====
+
+  /// Lädt zuletzt ausgewählte Projekt-ID aus localStorage
+  /// (ermöglicht, dass Benutzer beim nächsten Besuch dasselbe Projekt sieht)
   function getStoredProjectId() {
     try {
       return localStorage.getItem(LAST_SELECTED_PROJECT_ID_KEY)
@@ -123,6 +177,7 @@ function App() {
     }
   }
 
+  /// Speichert ausgewählte Projekt-ID in localStorage
   function storeProjectId(projectId) {
     try {
       if (projectId) {

@@ -14,8 +14,28 @@ using WbsTaskStatus = WbsTool.Api.Modules.TaskStatuses.Models.TaskStatus;
 
 namespace WbsTool.Api.Data;
 
+/// <summary>
+/// Entity Framework Core DbContext für WBS Tool
+/// 
+/// Verantwortung:
+/// 1. Entity Konfiguration (Tabellenmapping, Indizes, Constraints)
+/// 2. Relationship Configuration (Foreign Keys, Cascading)
+/// 3. Seed Data für Master Data (Kompetenzen, Tarifkategorien, Personen)
+/// 
+/// WICHTIGE REGELN:
+/// - WbsNode Unique Key: ProjectId + VisibleWbsId
+/// - ResourceAssignments: Multiple pro WbsNode erlaubt
+/// - Dashboard totals verwenden NUR WbsNode.PlannedHours/ActualHours (NICHT ResourceAssignments!)
+/// - CapacityAllocation.ProjectId nullable (externe/interne Arbeiten)
+/// - Guid Ids für alle Entities
+/// 
+/// Architektur: Diese Klasse defin iert die Persistierungsschicht,
+/// Services sollten diese nicht direkt manipulieren (verwende Services).
+/// </summary>
 public class AppDbContext : DbContext
 {
+    /// ===== ENTITY SETS (Tabellen) =====
+    /// Jedes DbSet repräsentiert eine Datenbank-Tabelle
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<WbsNode> WbsNodes => Set<WbsNode>();
     public DbSet<Person> Persons => Set<Person>();
@@ -38,22 +58,33 @@ public class AppDbContext : DbContext
     {
     }
 
+    /// ===== SEED DATA - Master Data Guids =====
+    /// Diese Guids sind fest definiert und werden beim Seed verwendet
+    /// Sie ermöglichen konsistente Referenzen in Tests und Development
+
+    /// Task Status Ids (für WBS Knoten)
     private static readonly Guid StatusEmptyId = Guid.Parse("10000000-0000-0000-0000-000000000001");
     private static readonly Guid StatusInCreationId = Guid.Parse("10000000-0000-0000-0000-000000000002");
     private static readonly Guid StatusDeliveredId = Guid.Parse("10000000-0000-0000-0000-000000000003");
     private static readonly Guid StatusBlockedId = Guid.Parse("10000000-0000-0000-0000-000000000004");
     private static readonly Guid StatusDoneId = Guid.Parse("10000000-0000-0000-0000-000000000005");
 
+    /// Rate Category Ids (Tarifkategorien A, B, C)
     private static readonly Guid RateAId = Guid.Parse("20000000-0000-0000-0000-000000000001");
     private static readonly Guid RateBId = Guid.Parse("20000000-0000-0000-0000-000000000002");
     private static readonly Guid RateCId = Guid.Parse("20000000-0000-0000-0000-000000000003");
 
+    /// Person Ids (Platzhalter und Test-Personen)
     private static readonly Guid PersonAlleId = Guid.Parse("30000000-0000-0000-0000-000000000001");
     private static readonly Guid PersonIngenieurId = Guid.Parse("30000000-0000-0000-0000-000000000002");
     private static readonly Guid PersonTobiasId = Guid.Parse("30000000-0000-0000-0000-000000000003");
     private static readonly Guid PersonIbrahimId = Guid.Parse("30000000-0000-0000-0000-000000000004");
     private static readonly Guid PersonDennisId = Guid.Parse("30000000-0000-0000-0000-000000000005");
 
+    /// <summary>
+    /// Konfiguriert alle Entity Mappings, Indizes und Relationships
+    /// Dies wird beim DbContext Init aufgerufen
+    /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -547,6 +578,9 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        /// ===== SEED DATEN LADEN =====
+        /// Diese Methoden laden Master Data in die Datenbank beim Initialisieren
+        /// Idempotent: Können mehrfach ausgeführt werden ohne Duplikate zu erzeugen
         SeedTaskStatuses(modelBuilder);
         SeedRateCategories(modelBuilder);
         SeedPersons(modelBuilder);
@@ -554,6 +588,10 @@ public class AppDbContext : DbContext
         SeedCompetencies(modelBuilder);
     }
 
+    /// <summary>
+    /// Seed: Task Status Katalog für WBS Knoten
+    /// Status: leer, in Erstellung, geliefert, blockiert, abgeschlossen
+    /// </summary>
     private static void SeedTaskStatuses(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<WbsTaskStatus>().HasData(
@@ -610,6 +648,10 @@ public class AppDbContext : DbContext
         );
     }
 
+    /// <summary>
+    /// Seed: Tarifkategorien (A, B, C) für Ressourcen-Kostenverwaltung
+    /// Werden für Ressourcen-Zuordnungen und Capacity Planning verwendet
+    /// </summary>
     private static void SeedRateCategories(ModelBuilder modelBuilder)
     {
         var now = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -651,7 +693,11 @@ public class AppDbContext : DbContext
         );
     }
 
-
+    /// <summary>
+    /// Seed: Kompetenzkatalog für Amprion PQ Freileitung
+    /// Enthält alle technischen Kompetenzen für Freileitung-Projekte
+    /// Beispiele: FM-Profil, CAD, GIS, Statik, Seilberechnung, Projektmanagement
+    /// </summary>
     private static void SeedCompetencies(ModelBuilder modelBuilder)
     {
         var now = new DateTime(2026, 7, 9, 0, 0, 0, DateTimeKind.Utc);
@@ -759,6 +805,12 @@ public class AppDbContext : DbContext
             }
         );
     }
+
+    /// <summary>
+    /// Seed: Personen (Platzhalter und Test-Personen)
+    /// Platzhalter: "alle" (Allgemein), "Ingenieur" (Rolleneinsatz)
+    /// Test-Personen: Tobias, Ibrahim, Dennis (für Entwicklung)
+    /// </summary>
     private static void SeedPersons(ModelBuilder modelBuilder)
     {
         var now = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -824,8 +876,11 @@ public class AppDbContext : DbContext
             }
         );
     }
-    
 
+    /// <summary>
+    /// Seed: Person-Kompetenz Zuordnungen (Test-Daten)
+    /// Mappt Test-Personen (Tobias, Ibrahim, Dennis) zu ihren Kompetenzen
+    /// </summary>
     private static void SeedPersonCompetencies(ModelBuilder modelBuilder)
     {
         var now = new DateTime(2026, 7, 9, 0, 0, 0, DateTimeKind.Utc);
