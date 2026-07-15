@@ -1,0 +1,8 @@
+SELECT
+    ProjectId,
+    VisibleWbsId,
+    COUNT(*) AS DuplicateCount
+FROM WbsNodes
+GROUP BY ProjectId, VisibleWbsId
+HAVING COUNT(*) > 1
+ORDER BY ProjectId, VisibleWbsId;

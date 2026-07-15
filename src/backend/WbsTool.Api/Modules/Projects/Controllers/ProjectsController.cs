@@ -9,14 +9,10 @@ namespace WbsTool.Api.Modules.Projects.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
-    private readonly IProjectDashboardService _projectDashboardService;
 
-    public ProjectsController(
-        IProjectService projectService,
-        IProjectDashboardService projectDashboardService)
+    public ProjectsController(IProjectService projectService)
     {
         _projectService = projectService;
-        _projectDashboardService = projectDashboardService;
     }
 
     [HttpGet]
@@ -40,38 +36,6 @@ public class ProjectsController : ControllerBase
         }
 
         return Ok(project);
-    }
-
-    [HttpGet("{id:guid}/dashboard")]
-    public ActionResult<ProjectDashboardDto> GetDashboard(Guid id)
-    {
-        var dashboard = _projectDashboardService.GetDashboard(id);
-
-        if (dashboard is null)
-        {
-            return NotFound(new
-            {
-                message = $"Project with id '{id}' was not found."
-            });
-        }
-
-        return Ok(dashboard);
-    }
-
-    [HttpGet("{id:guid}/resource-overview")]
-    public ActionResult<ProjectResourceOverviewDto> GetResourceOverview(Guid id)
-    {
-        var overview = _projectDashboardService.GetResourceOverview(id);
-
-        if (overview is null)
-        {
-            return NotFound(new
-            {
-                message = $"Project with id '{id}' was not found."
-            });
-        }
-
-        return Ok(overview);
     }
 
     [HttpPost]
