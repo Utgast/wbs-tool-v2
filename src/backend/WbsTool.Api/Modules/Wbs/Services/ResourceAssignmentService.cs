@@ -5,6 +5,22 @@ using WbsTool.Api.Modules.Wbs.Models;
 
 namespace WbsTool.Api.Modules.Wbs.Services;
 
+/// <summary>
+/// Resource Assignment Service - Verwaltung von Ressourcen-Zuordnungen
+/// 
+/// Verantwortung:
+/// - Zuweisung von Personen zu WBS Knoten
+/// - Verfolgung von Stunden pro Rolle/Person/Node
+/// - Tarifkategorien für geplante und tatsächliche Kosten
+/// 
+/// WICHTIG: ResourceAssignments sind DETAIL-Daten!
+/// - Mehrere Personen können einem Node zugeordnet werden
+/// - Dashboard-Totale verwenden WbsNode.PlannedHours/ActualHours, NICHT die Summe der Assignments
+/// - Das verhindert Doppelzählungen bei mehreren Personen pro Node
+/// 
+/// Architektur: Service mit direktem DbContext Zugriff (Data Access nicht separiert).
+/// Validiert Abhängigkeiten: WbsNode, Person, RateCategories existieren.
+/// </summary>
 public class ResourceAssignmentService : IResourceAssignmentService
 {
     private readonly AppDbContext _dbContext;
@@ -14,6 +30,9 @@ public class ResourceAssignmentService : IResourceAssignmentService
         _dbContext = dbContext;
     }
 
+    /// <summary>
+    /// Alle aktiven Ressourcen-Zuordnungen für einen WBS Knoten abrufen
+    /// </summary>
     public IEnumerable<ResourceAssignmentDto> GetByWbsNode(Guid projectId, Guid wbsNodeId)
     {
         return _dbContext.ResourceAssignments
@@ -32,6 +51,10 @@ public class ResourceAssignmentService : IResourceAssignmentService
             .ToList();
     }
 
+    /// <summary>
+    /// Neue Ressourcen-Zuordnung erstellen
+    /// Validiert: WbsNode existiert, Person existiert, Tarifkategorien existieren
+    /// </summary>
     public ResourceAssignmentDto Create(
         Guid projectId,
         Guid wbsNodeId,
@@ -66,6 +89,9 @@ public class ResourceAssignmentService : IResourceAssignmentService
             ?? throw new ArgumentException("Created resource assignment could not be loaded.");
     }
 
+    /// <summary>
+    /// Ressourcen-Zuordnung aktualisieren (Stunden, Tarifkategorien, Rolle)
+    /// </summary>
     public ResourceAssignmentDto? Update(
         Guid projectId,
         Guid wbsNodeId,
@@ -102,6 +128,10 @@ public class ResourceAssignmentService : IResourceAssignmentService
         return LoadDto(entity.Id);
     }
 
+    /// <summary>
+    /// Ressourcen-Zuordnung softlöschen (IsActive = false)
+    /// Erhält historische Daten für Audit Trail
+    /// </summary>
     public bool Deactivate(Guid projectId, Guid wbsNodeId, Guid assignmentId)
     {
         var entity = _dbContext.ResourceAssignments

@@ -5,6 +5,22 @@ using WbsTool.Api.Modules.Wbs.Models;
 
 namespace WbsTool.Api.Modules.Wbs.Services;
 
+/// <summary>
+/// WBS Service - Kernmodul für Projektstrukturmanagement
+/// 
+/// Verantwortung:
+/// - WBS Knoten CRUD (Create, Read, Update, Delete)
+/// - Baumstruktur (Parent-Child Relationships, Level-Berechnung)
+/// - Sorting und Visible WBS ID Generation (z.B. "1.2.3")
+/// - Konsolidierte Metriken (PlannedHours, ActualHours)
+/// 
+/// WICHTIG: Nur WbsNode-Werte für Dashboard verwenden!
+/// ResourceAssignments sind Detail-Daten und dürfen NICHT für Totale verwendet werden.
+/// Das verhindert Doppelzählungen (mehrere Personen pro Node).
+/// 
+/// Architektur: Diese Klasse ist eine Service Implementierung mit
+/// direktem DbContext Zugriff (Data Access nicht separiert).
+/// </summary>
 public class WbsService : IWbsService
 {
     private readonly AppDbContext _dbContext;
@@ -14,6 +30,9 @@ public class WbsService : IWbsService
         _dbContext = dbContext;
     }
 
+    /// <summary>
+    /// Alle aktiven WBS Knoten für ein Projekt abrufen (flach)
+    /// </summary>
     public IEnumerable<WbsNodeDto> GetByProjectId(Guid projectId)
     {
         var nodes = _dbContext.WbsNodes
@@ -27,6 +46,10 @@ public class WbsService : IWbsService
         return nodes.Select(MapToDto).ToList();
     }
 
+    /// <summary>
+    /// WBS als hierarchische Baumstruktur abrufen
+    /// Gibt Parent-Child Beziehungen mit Children Collections zurück
+    /// </summary>
     public IEnumerable<WbsTreeNodeDto> GetTreeByProjectId(Guid projectId)
     {
         var flatNodes = _dbContext.WbsNodes
@@ -58,6 +81,12 @@ public class WbsService : IWbsService
         return rootNodes;
     }
 
+    /// <summary>
+    /// Neuen WBS Knoten erstellen
+    /// - Generiert Visible WBS ID (z.B. "1.2.3") basierend auf Parent und SortOrder
+    /// - Berechnet Level (Tiefe im Baum)
+    /// - Validiert Duplikate (eindeutige Kombination: ProjectId + VisibleWbsId)
+    /// </summary>
     public WbsNodeDto Create(Guid projectId, CreateWbsNodeRequest request)
     {
         var projectExists = _dbContext.Projects.Any(p => p.Id == projectId);
@@ -131,6 +160,10 @@ public class WbsService : IWbsService
         return MapToDto(createdNode);
     }
 
+    /// <summary>
+    /// WBS Knoten aktualisieren (Titel, Stunden, Status, etc.)
+    /// Validiert: Visible WBS ID Duplikate
+    /// </summary>
     public WbsNodeDto? Update(Guid projectId, Guid id, UpdateWbsNodeRequest request)
     {
         var node = _dbContext.WbsNodes.FirstOrDefault(w =>
@@ -178,6 +211,10 @@ public class WbsService : IWbsService
         return MapToDto(updatedNode);
     }
 
+    /// <summary>
+    /// WBS Knoten softlöschen (IsActive = false statt physikalisch löschen)
+    /// Erhält Audit Trail und historische Daten
+    /// </summary>
     public bool SoftDelete(Guid id)
     {
         var node = _dbContext.WbsNodes.FirstOrDefault(w => w.Id == id);
@@ -193,6 +230,10 @@ public class WbsService : IWbsService
         return true;
     }
 
+    /// <summary>
+    /// Berechnet die nächste SortOrder-Nummer für einen neuen Sibling
+    /// (max existing + 1)
+    /// </summary>
     private int GetNextSortOrder(Guid projectId, Guid? parentId)
     {
         var siblingSortOrders = _dbContext.WbsNodes
@@ -207,6 +248,9 @@ public class WbsService : IWbsService
         return (maxSortOrder ?? 0) + 1;
     }
 
+    /// <summary>
+    /// Generiert Visible WBS ID in Hierarchie-Notation (z.B. "1.2.3")
+    /// </summary>
     private string GenerateVisibleWbsId(Guid projectId, Guid? parentId, int sortOrder)
     {
         if (!parentId.HasValue)
@@ -227,6 +271,9 @@ public class WbsService : IWbsService
         return $"{parent.VisibleWbsId}.{sortOrder}";
     }
 
+    /// <summary>
+    /// Konvertiert String zu WbsNodeType Enum
+    /// </summary>
     private static WbsNodeType ParseNodeType(string type)
     {
         return type.Trim().ToLower() switch
@@ -238,6 +285,9 @@ public class WbsService : IWbsService
         };
     }
 
+    /// <summary>
+    /// Mappt WbsNode Entity zu DTO für API Response
+    /// </summary>
     private static WbsNodeDto MapToDto(WbsNode node)
     {
         return new WbsNodeDto
