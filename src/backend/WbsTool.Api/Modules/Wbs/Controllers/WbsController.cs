@@ -15,6 +15,11 @@ public class WbsController : ControllerBase
         _wbsService = wbsService;
     }
 
+    /// <summary>
+    /// Liefert alle WBS-Knoten eines Projekts als flache Liste.
+    /// </summary>
+    // Fachlicher Zweck: Die flache Liste wird genutzt, wenn Arbeitspakete
+    // in Tabellen oder einfachen Listenansichten ohne Hierarchie angezeigt werden.
     [HttpGet]
     public ActionResult<IEnumerable<WbsNodeDto>> GetByProjectId(Guid projectId)
     {
@@ -22,6 +27,11 @@ public class WbsController : ControllerBase
         return Ok(nodes);
     }
 
+    /// <summary>
+    /// Liefert die WBS eines Projekts als hierarchischen Baum.
+    /// </summary>
+    // Fachlicher Zweck: Die Baumstruktur wird im Frontend verwendet,
+    // um Arbeitspakete in ihrer Parent/Child-Struktur darzustellen.
     [HttpGet("tree")]
     public ActionResult<IEnumerable<WbsTreeNodeDto>> GetTreeByProjectId(Guid projectId)
     {
@@ -29,6 +39,11 @@ public class WbsController : ControllerBase
         return Ok(nodes);
     }
 
+    /// <summary>
+    /// Legt einen neuen WBS-Knoten fuer ein Projekt an.
+    /// </summary>
+    // Fachlicher Zweck: Der Endpunkt ermoeglicht das schrittweise Aufbauen
+    // der Arbeitspaketstruktur direkt im Projektkontext.
     [HttpPost]
     public ActionResult<WbsNodeDto> Create(Guid projectId, CreateWbsNodeRequest request)
     {

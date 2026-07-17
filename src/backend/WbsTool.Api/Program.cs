@@ -1,5 +1,7 @@
 using WbsTool.Api.Modules.Wbs.Services;
 using Microsoft.EntityFrameworkCore;
+using WbsTool.Api.Modules.Capacity.Services;
+using WbsTool.Api.Modules.Competencies.Services;
 using WbsTool.Api.Data;
 using WbsTool.Api.Modules.Projects.Services;
 
@@ -13,6 +15,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IWbsService, WbsService>();
+builder.Services.AddScoped<ICompetencyService, CompetencyService>();
+builder.Services.AddScoped<ICapacityService, CapacityService>();
 
 var app = builder.Build();
 

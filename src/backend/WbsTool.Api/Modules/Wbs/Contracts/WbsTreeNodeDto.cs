@@ -7,13 +7,20 @@ public class WbsTreeNodeDto
     public Guid? ParentId { get; set; }
 
     public string VisibleWbsId { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int ProgressPercent { get; set; }
+    public string ResponsiblePersonName { get; set; } = string.Empty;
 
     public string Type { get; set; } = string.Empty;
     public int Level { get; set; }
     public int SortOrder { get; set; }
     public bool IsActive { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public DateOnly? PlannedStart { get; set; }
     public DateOnly? PlannedEnd { get; set; }

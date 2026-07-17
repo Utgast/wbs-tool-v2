@@ -9,13 +9,21 @@ public class WbsNode
     public Guid? ParentId { get; set; }
 
     public string VisibleWbsId { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+
+    public WbsNodeStatus Status { get; set; } = WbsNodeStatus.Offen;
+    public int ProgressPercent { get; set; }
+    public string ResponsiblePersonName { get; set; } = string.Empty;
 
     public WbsNodeType Type { get; set; }
     public int Level { get; set; }
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public DateOnly? PlannedStart { get; set; }
     public DateOnly? PlannedEnd { get; set; }
